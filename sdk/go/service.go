@@ -14,8 +14,17 @@ import (
 )
 
 // Reducer is a pure function: given an event type, current model, and event,
-// return the new model and any new events to publish.
-type Reducer[M any] func(eventType string, model M, event Event) (M, []Event)
+// return the new model, any new events to publish, and an error.
+//
+// A non-nil error signals that the event could not be processed (e.g. the
+// payload could not be unmarshaled into the expected data type). The supervisor
+// leaves the model unchanged and emits an _exception event. The raw event is
+// still stored in JetStream — this is not data loss.
+//
+// Note: eventType is also available as event.Type. The redundant parameter
+// exists so the supervisor can dispatch without callers needing to inspect
+// the event struct.
+type Reducer[M any] func(eventType string, model M, event Event) (M, []Event, error)
 
 // Validator checks domain invariants on a reduced model.
 // Returns an empty slice when valid.
@@ -52,6 +61,9 @@ func (c *ServiceConfig[M]) withDefaults() {
 	}
 	if c.PassivateTimeout == 0 {
 		c.PassivateTimeout = 5 * time.Minute
+	}
+	if c.Validator == nil {
+		c.Validator = func(M) []ValidationError { return nil }
 	}
 }
 
@@ -138,7 +150,10 @@ func (s *Service[M]) Run(ctx context.Context) error {
 	}
 
 	// Also subscribe to hydration requests.
-	hydrationSubject := "perhap." + s.config.Context + ".*._model.get"
+	// Subject uses "_perhap." prefix (not "perhap.") so it is OUTSIDE the
+	// JetStream stream filter ("perhap.{context}.>"). This prevents JetStream
+	// from intercepting the request-reply and sending a PubAck as the response.
+	hydrationSubject := "_perhap." + s.config.Context + ".*.model"
 	hydSub, err := s.nc.Subscribe(hydrationSubject, func(msg *nats.Msg) {
 		parts := strings.Split(msg.Subject, ".")
 		if len(parts) >= 3 {
@@ -269,7 +284,7 @@ func (s *Service[M]) replayFromJetStream(entityID string) (M, string, error) {
 	model := zero
 	for _, e := range events {
 		log.Printf("perhap: replay applying %s id=%s", e.Type, e.ID)
-		model, _ = s.config.Reducer(e.Type, model, e)
+		model, _, _ = s.config.Reducer(e.Type, model, e)
 	}
 	return model, events[len(events)-1].ID, nil
 }

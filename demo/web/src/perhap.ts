@@ -122,7 +122,10 @@ export function watch(
   })
 
   // 2. Hydrate: request current model.
-  const hydSubject = `perhap.${context}.${entityId}._model.get`
+  // Uses "_perhap." prefix to avoid matching the JetStream stream filter
+  // ("perhap.{context}.>"), which would cause NATS to send a PubAck as the
+  // reply before the service handler responds.
+  const hydSubject = `_perhap.${context}.${entityId}.model`
   console.log(`[perhap] hydration request → ${hydSubject}`)
   nc.request(hydSubject, sc.encode(''), { timeout: 5000 })
     .then(msg => {

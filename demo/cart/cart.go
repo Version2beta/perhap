@@ -46,7 +46,7 @@ func newCart() Cart {
 }
 
 // CartReducer is the pure reducer for the cart domain.
-func CartReducer(eventType string, model Cart, event perhap.Event) (Cart, []perhap.Event) {
+func CartReducer(eventType string, model Cart, event perhap.Event) (Cart, []perhap.Event, error) {
 	if model.Items == nil {
 		model.Items = make(map[string]CartItem)
 	}
@@ -55,7 +55,7 @@ func CartReducer(eventType string, model Cart, event perhap.Event) (Cart, []perh
 	case "item_added":
 		var d ItemAddedData
 		if err := json.Unmarshal(event.Data, &d); err != nil {
-			return model, nil
+			return model, nil, fmt.Errorf("unmarshal item_added: %w", err)
 		}
 		if existing, ok := model.Items[d.ProductID]; ok {
 			existing.Quantity += d.Quantity
@@ -74,14 +74,14 @@ func CartReducer(eventType string, model Cart, event perhap.Event) (Cart, []perh
 	case "item_removed":
 		var d ItemRemovedData
 		if err := json.Unmarshal(event.Data, &d); err != nil {
-			return model, nil
+			return model, nil, fmt.Errorf("unmarshal item_removed: %w", err)
 		}
 		delete(model.Items, d.ProductID)
 
 	case "quantity_changed":
 		var d QuantityChangedData
 		if err := json.Unmarshal(event.Data, &d); err != nil {
-			return model, nil
+			return model, nil, fmt.Errorf("unmarshal quantity_changed: %w", err)
 		}
 		if item, ok := model.Items[d.ProductID]; ok {
 			item.Quantity = d.Quantity
@@ -91,7 +91,7 @@ func CartReducer(eventType string, model Cart, event perhap.Event) (Cart, []perh
 	}
 
 	model = recalculate(model)
-	return model, nil
+	return model, nil, nil
 }
 
 const taxRate = 0.08875 // NYC combined tax rate, for flavor

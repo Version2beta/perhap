@@ -108,7 +108,12 @@ func (sv *supervisor[M]) processEvent(event Event) {
 	var newEvents []Event
 	for _, e := range sv.window {
 		var evts []Event
-		model, evts = sv.config.Reducer(e.Type, model, e)
+		var err error
+		model, evts, err = sv.config.Reducer(e.Type, model, e)
+		if err != nil {
+			log.Printf("perhap: reducer error %s/%s type=%s id=%s: %v — model unchanged",
+				sv.config.Context, sv.entityID, e.Type, e.ID, err)
+		}
 		newEvents = append(newEvents, evts...)
 	}
 
@@ -144,7 +149,7 @@ func (sv *supervisor[M]) maybeAdvanceSnapshot() {
 	toFold := sv.window[:n]
 	model := sv.snapshot
 	for _, e := range toFold {
-		model, _ = sv.config.Reducer(e.Type, model, e)
+		model, _, _ = sv.config.Reducer(e.Type, model, e)
 		delete(sv.windowUUIDs, e.ID)
 	}
 	sv.snapshot = model
