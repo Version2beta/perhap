@@ -274,7 +274,11 @@ function serializeFormData(form: HTMLFormElement): Record<string, unknown> {
   return result
 }
 
+const wiredTells = new WeakSet<Element>()
+
 function attachTell(el: Element, scope: { context: string; entityId: string }) {
+  if (wiredTells.has(el)) return  // already wired
+  wiredTells.add(el)
   const eventType = el.getAttribute('data-tell')!
   const target = el.getAttribute('data-tell-target')
   const { context, entityId } = target ? (parseWatch(target) ?? scope) : scope
@@ -327,8 +331,24 @@ function unmountWatch(el: Element) {
   }
 }
 
+// Wire a data-tell element that has an explicit data-tell-target
+// (i.e. it lives outside any data-watch scope).
+function mountOrphanTell(el: Element) {
+  const target = el.getAttribute('data-tell-target')
+  if (!target) return
+  const scope = parseWatch(target)
+  if (!scope) return
+  attachTell(el, scope)
+}
+
 function initDOM() {
   document.querySelectorAll('[data-watch]').forEach(mountWatch)
+
+  // Wire any data-tell elements that sit outside a watch scope but have
+  // an explicit data-tell-target (e.g. catalog add-to-cart buttons).
+  document.querySelectorAll('[data-tell][data-tell-target]').forEach(el => {
+    if (!nearestWatchElement(el)) mountOrphanTell(el)
+  })
 
   const observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {
@@ -337,6 +357,13 @@ function initDOM() {
         const el = node as Element
         if (el.hasAttribute('data-watch')) mountWatch(el)
         el.querySelectorAll('[data-watch]').forEach(mountWatch)
+        // Also wire orphan tells added dynamically.
+        if (el.hasAttribute('data-tell') && el.hasAttribute('data-tell-target') && !nearestWatchElement(el)) {
+          mountOrphanTell(el)
+        }
+        el.querySelectorAll('[data-tell][data-tell-target]').forEach(child => {
+          if (!nearestWatchElement(child)) mountOrphanTell(child)
+        })
       })
       mutation.removedNodes.forEach(node => {
         if (node.nodeType !== Node.ELEMENT_NODE) return
@@ -349,6 +376,12 @@ function initDOM() {
         unmountWatch(el)
         mountWatch(el)
       }
+      // Re-wire orphan tells when data-tell-target is set dynamically
+      // (e.g. the inline script resolving data-tell-target-ref).
+      if (mutation.type === 'attributes' && mutation.attributeName === 'data-tell-target') {
+        const el = mutation.target as Element
+        if (!nearestWatchElement(el)) mountOrphanTell(el)
+      }
     }
   })
 
@@ -356,7 +389,7 @@ function initDOM() {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['data-watch'],
+    attributeFilter: ['data-watch', 'data-tell-target'],
   })
 }
 

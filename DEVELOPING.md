@@ -5,11 +5,11 @@ Three processes, three terminal tabs.
 ## 1. NATS server
 
 ```
-nats-server -js
+nats-server -c demo/nats.conf
 ```
 
-Starts NATS with JetStream enabled on `localhost:4222`.
-The NATS WebSocket port is `4223` (enabled by default in recent versions).
+Starts NATS with JetStream on `localhost:4222` and WebSocket on `localhost:4223`.
+WebSocket must be explicitly configured — `nats-server -js` alone does not enable it.
 
 ## 2. Cart domain service
 
