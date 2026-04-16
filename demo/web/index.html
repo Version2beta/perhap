@@ -261,16 +261,7 @@
         `
       }).join('')
 
-      // Re-attach tell handlers for dynamically-rendered remove buttons.
-      itemsEl.querySelectorAll('[data-tell]').forEach(btn => {
-        const target = btn.getAttribute('data-tell-target')
-        const eventType = btn.getAttribute('data-tell')
-        const staticData = btn.getAttribute('data-tell-data')
-        btn.addEventListener('click', () => {
-          const parts = target.split('/')
-          window.__perhap?.tell(parts[0], parts[1], eventType, JSON.parse(staticData))
-        }, { once: true })
-      })
+      // data-tell wiring is handled automatically by the SDK's MutationObserver.
     })
   </script>
 </body>

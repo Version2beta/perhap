@@ -331,24 +331,32 @@ function unmountWatch(el: Element) {
   }
 }
 
-// Wire a data-tell element that has an explicit data-tell-target
-// (i.e. it lives outside any data-watch scope).
-function mountOrphanTell(el: Element) {
-  const target = el.getAttribute('data-tell-target')
-  if (!target) return
-  const scope = parseWatch(target)
-  if (!scope) return
-  attachTell(el, scope)
+// Resolve and wire a single data-tell element. Works whether the element
+// is inside a data-watch scope, outside with an explicit data-tell-target,
+// or added dynamically after the initial scan.
+function wireTell(el: Element) {
+  const explicitTarget = el.getAttribute('data-tell-target')
+  if (explicitTarget) {
+    const scope = parseWatch(explicitTarget)
+    if (scope) attachTell(el, scope)
+    return
+  }
+  const watchEl = nearestWatchElement(el)
+  if (!watchEl) return
+  const scope = parseWatch(watchEl.getAttribute('data-watch')!)
+  if (scope) attachTell(el, scope)
+}
+
+function wireTellsIn(root: Element) {
+  if (root.hasAttribute('data-tell')) wireTell(root)
+  root.querySelectorAll('[data-tell]').forEach(wireTell)
 }
 
 function initDOM() {
   document.querySelectorAll('[data-watch]').forEach(mountWatch)
-
-  // Wire any data-tell elements that sit outside a watch scope but have
-  // an explicit data-tell-target (e.g. catalog add-to-cart buttons).
-  document.querySelectorAll('[data-tell][data-tell-target]').forEach(el => {
-    if (!nearestWatchElement(el)) mountOrphanTell(el)
-  })
+  // Wire any data-tell elements already in the DOM (e.g. catalog buttons
+  // with explicit data-tell-target set before initDOM runs).
+  document.querySelectorAll('[data-tell]').forEach(wireTell)
 
   const observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {
@@ -357,13 +365,8 @@ function initDOM() {
         const el = node as Element
         if (el.hasAttribute('data-watch')) mountWatch(el)
         el.querySelectorAll('[data-watch]').forEach(mountWatch)
-        // Also wire orphan tells added dynamically.
-        if (el.hasAttribute('data-tell') && el.hasAttribute('data-tell-target') && !nearestWatchElement(el)) {
-          mountOrphanTell(el)
-        }
-        el.querySelectorAll('[data-tell][data-tell-target]').forEach(child => {
-          if (!nearestWatchElement(child)) mountOrphanTell(child)
-        })
+        // Wire any data-tell elements in the added subtree.
+        wireTellsIn(el)
       })
       mutation.removedNodes.forEach(node => {
         if (node.nodeType !== Node.ELEMENT_NODE) return
@@ -376,11 +379,8 @@ function initDOM() {
         unmountWatch(el)
         mountWatch(el)
       }
-      // Re-wire orphan tells when data-tell-target is set dynamically
-      // (e.g. the inline script resolving data-tell-target-ref).
       if (mutation.type === 'attributes' && mutation.attributeName === 'data-tell-target') {
-        const el = mutation.target as Element
-        if (!nearestWatchElement(el)) mountOrphanTell(el)
+        wireTell(mutation.target as Element)
       }
     }
   })
@@ -395,12 +395,4 @@ function initDOM() {
 
 // ── Auto-init ──────────────────────────────────────────────────────────────
 
-// Expose tell on window so inline scripts can call window.__perhap.tell(...)
-declare global {
-  interface Window { __perhap: { tell: typeof tell } }
-}
-
-configure().then(() => {
-  window.__perhap = { tell }
-  initDOM()
-})
+configure().then(initDOM)
