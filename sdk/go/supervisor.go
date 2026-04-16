@@ -86,11 +86,15 @@ func (sv *supervisor[M]) run() {
 func (sv *supervisor[M]) processEvent(event Event) {
 	// Deduplication: skip if already in window or before snapshot.
 	if sv.windowUUIDs[event.ID] {
+		log.Printf("perhap: DEDUP %s/%s type=%s id=%s", sv.config.Context, sv.entityID, event.Type, event.ID)
 		return
 	}
 	if sv.snapshotUUID != "" && event.ID <= sv.snapshotUUID {
+		log.Printf("perhap: DEDUP (before snapshot) %s/%s type=%s id=%s snapshot=%s", sv.config.Context, sv.entityID, event.Type, event.ID, sv.snapshotUUID)
 		return
 	}
+
+	log.Printf("perhap: processEvent %s/%s type=%s id=%s", sv.config.Context, sv.entityID, event.Type, event.ID)
 
 	// Insert into window at correct UUID position.
 	sv.window = append(sv.window, event)
@@ -114,6 +118,7 @@ func (sv *supervisor[M]) processEvent(event Event) {
 		sv.lastValid = model
 		sv.valid = true
 	} else {
+		log.Printf("perhap: VALIDATION FAILED %s/%s: %v", sv.config.Context, sv.entityID, errs)
 		sv.valid = false
 		sv.emitException(errs, newEvents)
 	}
@@ -127,6 +132,7 @@ func (sv *supervisor[M]) processEvent(event Event) {
 	sv.maybeAdvanceSnapshot()
 
 	// Publish model update.
+	log.Printf("perhap: publishModel %s/%s reducedThrough=%s window=%d", sv.config.Context, sv.entityID, sv.reducedThrough(), len(sv.window))
 	sv.publishModel()
 }
 

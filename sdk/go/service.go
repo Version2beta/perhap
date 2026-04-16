@@ -106,27 +106,30 @@ func (s *Service[M]) Run(ctx context.Context) error {
 	subject := "perhap." + s.config.Context + ".*.>"
 
 	sub, err := s.nc.QueueSubscribe(subject, queueGroup, func(msg *nats.Msg) {
-		// Skip internal subjects (_model, _model.get)
+		// Subject format: perhap.{context}.{entityId}.{eventType}[.{sub}...]
+		// Internal subjects have a segment starting with "_" after the entity ID.
 		parts := strings.Split(msg.Subject, ".")
 		if len(parts) < 4 {
 			return
 		}
-		eventType := parts[len(parts)-1]
-		if strings.HasPrefix(eventType, "_") {
-			// Handle _model.get hydration requests
-			if msg.Subject == "perhap."+s.config.Context+"."+parts[2]+"._model.get" {
-				s.handleHydrationRequest(msg, parts[2])
-			}
+		entityID := parts[2]
+		// parts[3] is the first segment after entityId — internal if it starts with "_"
+		if strings.HasPrefix(parts[3], "_") {
+			// Queue subscriber ignores all internal subjects; the dedicated
+			// hydration subscriber handles _model.get responses.
 			return
 		}
+
+		eventType := parts[3]
+		log.Printf("perhap: received %s on %s", eventType, msg.Subject)
 
 		var event Event
 		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			log.Printf("perhap: unmarshal event: %v", err)
-			msg.Nak()
-			return
+			return  // do NOT Nak — this is plain NATS, Nak publishes "-NAK" to the reply inbox
 		}
 
+		log.Printf("perhap: dispatching %s id=%s to supervisor %s", event.Type, event.ID, entityID)
 		s.getOrCreateSupervisor(event.EntityID).send(event)
 		msg.Ack()
 	})
@@ -177,10 +180,12 @@ func (s *Service[M]) handleHydrationRequest(msg *nats.Msg, entityID string) {
 
 	if !ok {
 		// No active supervisor — replay from JetStream.
+		log.Printf("perhap: hydration request %s/%s — no active supervisor, replaying from JetStream", s.config.Context, entityID)
 		model, reducedThrough, err := s.replayFromJetStream(entityID)
 		if err != nil {
 			log.Printf("perhap: hydration replay %s/%s: %v", s.config.Context, entityID, err)
 		}
+		log.Printf("perhap: hydration replay done %s/%s reducedThrough=%q", s.config.Context, entityID, reducedThrough)
 		data, _ := json.Marshal(model)
 		update := ModelUpdate{
 			EntityID:       entityID,
@@ -198,6 +203,7 @@ func (s *Service[M]) handleHydrationRequest(msg *nats.Msg, entityID string) {
 		return
 	}
 
+	log.Printf("perhap: hydration request %s/%s — active supervisor responding", s.config.Context, entityID)
 	resp := sv.currentModelUpdate()
 	msg.Respond(resp)
 }
@@ -249,6 +255,8 @@ func (s *Service[M]) replayFromJetStream(entityID string) (M, string, error) {
 		}
 	}
 
+	log.Printf("perhap: replay %s/%s: collected %d events", s.config.Context, entityID, len(events))
+
 	if len(events) == 0 {
 		return zero, "", nil
 	}
@@ -260,6 +268,7 @@ func (s *Service[M]) replayFromJetStream(entityID string) (M, string, error) {
 
 	model := zero
 	for _, e := range events {
+		log.Printf("perhap: replay applying %s id=%s", e.Type, e.ID)
 		model, _ = s.config.Reducer(e.Type, model, e)
 	}
 	return model, events[len(events)-1].ID, nil

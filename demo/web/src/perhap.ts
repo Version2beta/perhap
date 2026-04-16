@@ -62,9 +62,14 @@ export async function configure(opts?: { server?: string; credentials?: string }
     ?? document.querySelector<HTMLMetaElement>('meta[name="perhap-server"]')?.content
     ?? 'ws://localhost:4223'
 
-  nc = await connect({ servers: server })
-  console.log('[perhap] connected to', server)
-  _readyResolve()
+  console.log('[perhap] connecting to', server)
+  try {
+    nc = await connect({ servers: server })
+    console.log('[perhap] connected to', server)
+    _readyResolve()
+  } catch (err) {
+    console.error('[perhap] connection failed:', err)
+  }
 }
 
 // ── Core API ───────────────────────────────────────────────────────────────
@@ -75,7 +80,9 @@ export function watch(
   onUpdate: (state: ModelState) => void,
   reducer?: FrontendReducer
 ): () => void {
-  if (!nc) { console.warn('[perhap] not configured'); return () => {} }
+  if (!nc) { console.warn('[perhap] watch() called before nc ready — call after ready resolves'); return () => {} }
+
+  console.log(`[perhap] watch ${context}/${entityId}`)
 
   const state: ModelState = {
     reduction: null,
@@ -100,10 +107,13 @@ export function watch(
 
   // 1. Open subscription first, buffering updates until hydrated.
   const subject = `perhap.${context}.${entityId}._model`
+  console.log(`[perhap] subscribing to ${subject}`)
   handle.sub = nc.subscribe(subject, {
     callback: (_err, msg) => {
       const update: ModelUpdate = JSON.parse(sc.decode(msg.data))
+      console.log(`[perhap] _model msg: rt=${update.reduced_through || '(empty)'} pending=${update.pending} hydrated=${handle.hydrated}`)
       if (!handle.hydrated) {
+        console.log(`[perhap] buffering (not yet hydrated)`)
         handle.buffer.push(update)
         return
       }
@@ -113,16 +123,23 @@ export function watch(
 
   // 2. Hydrate: request current model.
   const hydSubject = `perhap.${context}.${entityId}._model.get`
+  console.log(`[perhap] hydration request → ${hydSubject}`)
   nc.request(hydSubject, sc.encode(''), { timeout: 5000 })
     .then(msg => {
       const hydration: ModelUpdate = JSON.parse(sc.decode(msg.data))
+      console.log(`[perhap] hydration response: rt=${hydration.reduced_through || '(empty)'} items=${JSON.stringify(hydration.reduction)}`)
       handle.hydrated = true
       applyUpdate(handle, hydration)
       // Drain buffer: apply anything newer than hydration.
+      let drained = 0
       for (const buffered of handle.buffer) {
         if (isNewer(buffered.reduced_through, hydration.reduced_through)) {
           applyUpdate(handle, buffered)
+          drained++
         }
+      }
+      if (handle.buffer.length > 0) {
+        console.log(`[perhap] buffer drained: ${drained}/${handle.buffer.length} applied`)
       }
       handle.buffer = []
     })
@@ -145,33 +162,40 @@ export function tell(
   data: unknown,
   opts?: { causationId?: string }
 ): void {
-  if (!nc) { console.warn('[perhap] not configured'); return }
+  if (!nc) { console.warn('[perhap] tell() called before nc ready'); return }
 
+  const eventId = newUUIDv6()
   const event = {
-    id: newUUIDv4(), // MVP: v4 for simplicity; production uses UUIDv6
+    id: eventId,
     entity_id: entityId,
     context,
     type: eventType,
     causation_id: opts?.causationId ?? null,
-    correlation_id: newUUIDv4(),
+    correlation_id: newUUIDv6(),
     data,
   }
 
+  console.log(`[perhap] tell: ${context}/${entityId} ${eventType} id=${eventId}`, data)
+
   // Apply optimistic update immediately if this watch has a frontend reducer.
   const handle = watchRegistry.get(`${context}/${entityId}`)
-  if (handle?.reducer && handle.lastState.reduction !== null) {
+  if (handle?.reducer && handle.lastState.reduction != null) {  // != guards null AND undefined
     const newReduction = handle.reducer(handle.lastState.reduction, eventType, data)
     const optimistic: ModelState = {
       ...handle.lastState,
       reduction: newReduction,
       pending: true,
     }
+    console.log(`[perhap] optimistic update applied: ${eventType}`, newReduction)
     handle.lastState = optimistic
     handle.onUpdate(optimistic)
     dispatchModelEvent(entityId, context, newReduction, true, handle.lastState.valid)
+  } else {
+    console.log(`[perhap] no optimistic update: handle=${!!handle} reducer=${!!handle?.reducer} reduction=${handle?.lastState.reduction !== null}`)
   }
 
   const subject = `perhap.${context}.${entityId}.${eventType}`
+  console.log(`[perhap] publish → ${subject}`)
   nc.publish(subject, sc.encode(JSON.stringify(event)))
 }
 
@@ -190,10 +214,12 @@ function dispatchModelEvent(
 }
 
 function applyUpdate(handle: WatchHandle, update: ModelUpdate) {
-  if (handle.lastState.reducedThrough !== null &&
-      !isNewer(update.reduced_through, handle.lastState.reducedThrough)) {
+  const prev = handle.lastState.reducedThrough
+  if (prev !== null && !isNewer(update.reduced_through, prev)) {
+    console.warn(`[perhap] DROPPED stale update: update.rt=${update.reduced_through || '(empty)'} <= prev.rt=${prev}`)
     return // stale
   }
+  console.log(`[perhap] applyUpdate: rt=${update.reduced_through || '(empty)'} (prev=${prev ?? 'null'}) pending=${update.pending}`, update.reduction)
   handle.lastState = {
     reduction: update.reduction,
     backendPending: update.pending,
@@ -211,12 +237,37 @@ function isNewer(a: string, b: string): boolean {
   return a > b
 }
 
-// Simplified UUID for MVP — production would use UUIDv6.
-function newUUIDv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-  })
+// UUIDv6: timestamp-ordered UUID compatible with the backend's NewEventID().
+// Encodes current time as 100ns intervals since 1582-10-15 in the high bits,
+// ensuring correct lexicographic ordering against backend-generated UUIDv6 IDs.
+function newUUIDv6(): string {
+  // UUID epoch offset: 100ns intervals from 1582-10-15 to 1970-01-01
+  const UUID_EPOCH_OFFSET = 122192928000000000n
+  const now = BigInt(Date.now()) * 10000n  // ms → 100ns intervals
+  const t = (now + UUID_EPOCH_OFFSET) & 0x0fffffffffffffffn  // 60-bit timestamp
+
+  // UUIDv6 bit layout:
+  //  [127:80] time_high (48 bits) = t[59:12]
+  //  [79:76]  version = 6
+  //  [75:64]  time_low (12 bits) = t[11:0]
+  //  [63:62]  variant = 10
+  //  [61:48]  clock_seq (14 bits, random)
+  //  [47:0]   node (48 bits, random)
+  const timeHigh  = (t >> 12n) & 0xffffffffffffn   // 48 bits → groups 1+2
+  const timeLow   = t & 0xfffn                       // 12 bits → lower group 3
+  const clockSeq  = BigInt(Math.random() * 0x3fff | 0)
+  const node1     = BigInt(Math.random() * 0xffff | 0)
+  const node2     = BigInt(Math.random() * 0xffff | 0)
+  const node3     = BigInt(Math.random() * 0xffff | 0)
+
+  const h = (n: bigint, len: number) => n.toString(16).padStart(len, '0')
+  return [
+    h(timeHigh >> 16n, 8),               // t[59:28] → group 1
+    h(timeHigh & 0xffffn, 4),            // t[27:12] → group 2
+    h(0x6000n | timeLow, 4),             // version 6 + t[11:0] → group 3
+    h(0x8000n | clockSeq, 4),            // variant 10 + clock_seq → group 4
+    h((node1 << 32n) | (node2 << 16n) | node3, 12)  // node → group 5
+  ].join('-')
 }
 
 // ── Declarative attribute layer ────────────────────────────────────────────
@@ -322,6 +373,8 @@ function attachTell(el: Element, scope: { context: string; entityId: string }) {
   const target = el.getAttribute('data-tell-target')
   const { context, entityId } = target ? (parseWatch(target) ?? scope) : scope
 
+  console.log(`[perhap] attachTell: ${el.tagName}[data-tell=${eventType}] → ${context}/${entityId}`)
+
   if (el.tagName === 'FORM') {
     el.addEventListener('submit', (e) => {
       e.preventDefault()
@@ -381,7 +434,10 @@ function wireTell(el: Element) {
     return
   }
   const watchEl = nearestWatchElement(el)
-  if (!watchEl) return
+  if (!watchEl) {
+    console.log(`[perhap] wireTell: ${el.tagName}[data-tell=${el.getAttribute('data-tell')}] has no target and no watch ancestor — skipped`)
+    return
+  }
   const scope = parseWatch(watchEl.getAttribute('data-watch')!)
   if (scope) attachTell(el, scope)
 }
@@ -392,10 +448,13 @@ function wireTellsIn(root: Element) {
 }
 
 function initDOM() {
-  document.querySelectorAll('[data-watch]').forEach(mountWatch)
-  // Wire any data-tell elements already in the DOM (e.g. catalog buttons
-  // with explicit data-tell-target set before initDOM runs).
-  document.querySelectorAll('[data-tell]').forEach(wireTell)
+  console.log('[perhap] initDOM')
+  const watchEls = document.querySelectorAll('[data-watch]')
+  const tellEls  = document.querySelectorAll('[data-tell]')
+  console.log(`[perhap] found ${watchEls.length} data-watch, ${tellEls.length} data-tell elements`)
+
+  watchEls.forEach(mountWatch)
+  tellEls.forEach(wireTell)
 
   const observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {
@@ -419,6 +478,7 @@ function initDOM() {
         mountWatch(el)
       }
       if (mutation.type === 'attributes' && mutation.attributeName === 'data-tell-target') {
+        console.log(`[perhap] data-tell-target changed on`, mutation.target)
         wireTell(mutation.target as Element)
       }
     }
