@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -175,16 +176,19 @@ func (s *Service[M]) handleHydrationRequest(msg *nats.Msg, entityID string) {
 	s.mu.Unlock()
 
 	if !ok {
-		// No active supervisor — return an empty model.
-		var zero M
-		data, _ := json.Marshal(zero)
+		// No active supervisor — replay from JetStream.
+		model, reducedThrough, err := s.replayFromJetStream(entityID)
+		if err != nil {
+			log.Printf("perhap: hydration replay %s/%s: %v", s.config.Context, entityID, err)
+		}
+		data, _ := json.Marshal(model)
 		update := ModelUpdate{
 			EntityID:       entityID,
 			Context:        s.config.Context,
 			Domain:         s.config.Domain,
 			SnapshotUUID:   "",
 			Window:         []string{},
-			ReducedThrough: "",
+			ReducedThrough: reducedThrough,
 			Pending:        false,
 			Valid:          true,
 			Reduction:      data,
@@ -196,4 +200,67 @@ func (s *Service[M]) handleHydrationRequest(msg *nats.Msg, entityID string) {
 
 	resp := sv.currentModelUpdate()
 	msg.Respond(resp)
+}
+
+// replayFromJetStream rebuilds entity state by consuming all stored events
+// from the JetStream stream. Used for hydration when no supervisor is active.
+func (s *Service[M]) replayFromJetStream(entityID string) (M, string, error) {
+	var zero M
+	filterSubject := fmt.Sprintf("perhap.%s.%s.*", s.config.Context, entityID)
+
+	sub, err := s.js.SubscribeSync(filterSubject,
+		nats.DeliverAll(),
+		nats.AckNone(),
+	)
+	if err != nil {
+		return zero, "", fmt.Errorf("subscribe for replay: %w", err)
+	}
+	defer sub.Drain()
+
+	var events []Event
+	for {
+		// Use a short timeout: 200ms for first message (handles empty entity),
+		// then rely on NumPending to detect the last message without extra wait.
+		msg, err := sub.NextMsg(200 * time.Millisecond)
+		if err != nil {
+			break // timeout — no more messages
+		}
+		parts := strings.Split(msg.Subject, ".")
+		if len(parts) < 4 {
+			continue
+		}
+		eventType := parts[len(parts)-1]
+		if strings.HasPrefix(eventType, "_") {
+			// Skip _model, _model.get, _exception
+			meta, _ := msg.Metadata()
+			if meta != nil && meta.NumPending == 0 {
+				break
+			}
+			continue
+		}
+		var event Event
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
+			continue
+		}
+		events = append(events, event)
+		meta, _ := msg.Metadata()
+		if meta != nil && meta.NumPending == 0 {
+			break // consumed all stored messages
+		}
+	}
+
+	if len(events) == 0 {
+		return zero, "", nil
+	}
+
+	// Sort by UUID to guarantee correct reduction order.
+	sort.Slice(events, func(i, j int) bool {
+		return events[i].ID < events[j].ID
+	})
+
+	model := zero
+	for _, e := range events {
+		model, _ = s.config.Reducer(e.Type, model, e)
+	}
+	return model, events[len(events)-1].ID, nil
 }

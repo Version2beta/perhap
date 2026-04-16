@@ -10,6 +10,15 @@ export interface ModelState {
   pending: boolean  // backendPending || local outbox has unconfirmed events
 }
 
+// A frontend reducer applies an event locally for optimistic updates.
+// Receives the current reduction, event type, and parsed data payload.
+// Returns the new reduction. Pure — no side effects.
+export type FrontendReducer = (
+  reduction: Record<string, unknown>,
+  eventType: string,
+  data: unknown
+) => Record<string, unknown>
+
 interface ModelUpdate {
   entity_id: string
   context: string
@@ -30,7 +39,12 @@ interface WatchHandle {
   lastState: ModelState
   buffer: ModelUpdate[]
   hydrated: boolean
+  reducer?: FrontendReducer
 }
+
+// Registry of active watches, keyed by "context/entityId".
+// Used by tell() to apply optimistic updates immediately.
+const watchRegistry = new Map<string, WatchHandle>()
 
 // ── Singleton connection ───────────────────────────────────────────────────
 
@@ -52,7 +66,8 @@ export async function configure(opts?: { server?: string; credentials?: string }
 export function watch(
   context: string,
   entityId: string,
-  onUpdate: (state: ModelState) => void
+  onUpdate: (state: ModelState) => void,
+  reducer?: FrontendReducer
 ): () => void {
   if (!nc) { console.warn('[perhap] not configured'); return () => {} }
 
@@ -72,7 +87,10 @@ export function watch(
     lastState: state,
     buffer: [],
     hydrated: false,
+    reducer,
   }
+
+  watchRegistry.set(`${context}/${entityId}`, handle)
 
   // 1. Open subscription first, buffering updates until hydrated.
   const subject = `perhap.${context}.${entityId}._model`
@@ -110,6 +128,7 @@ export function watch(
 
   return () => {
     handle.sub.unsubscribe()
+    watchRegistry.delete(`${context}/${entityId}`)
   }
 }
 
@@ -132,11 +151,37 @@ export function tell(
     data,
   }
 
+  // Apply optimistic update immediately if this watch has a frontend reducer.
+  const handle = watchRegistry.get(`${context}/${entityId}`)
+  if (handle?.reducer && handle.lastState.reduction !== null) {
+    const newReduction = handle.reducer(handle.lastState.reduction, eventType, data)
+    const optimistic: ModelState = {
+      ...handle.lastState,
+      reduction: newReduction,
+      pending: true,
+    }
+    handle.lastState = optimistic
+    handle.onUpdate(optimistic)
+    dispatchModelEvent(entityId, context, newReduction, true, handle.lastState.valid)
+  }
+
   const subject = `perhap.${context}.${entityId}.${eventType}`
   nc.publish(subject, sc.encode(JSON.stringify(event)))
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+function dispatchModelEvent(
+  entityId: string,
+  context: string,
+  reduction: Record<string, unknown>,
+  pending: boolean,
+  valid: boolean
+) {
+  window.dispatchEvent(new CustomEvent('perhap:model', {
+    detail: { entity_id: entityId, context, reduction, pending, valid }
+  }))
+}
 
 function applyUpdate(handle: WatchHandle, update: ModelUpdate) {
   if (handle.lastState.reducedThrough !== null &&
@@ -148,22 +193,10 @@ function applyUpdate(handle: WatchHandle, update: ModelUpdate) {
     backendPending: update.pending,
     valid: update.valid,
     reducedThrough: update.reduced_through,
-    pending: update.pending, // MVP: no outbox yet
+    pending: update.pending,
   }
   handle.onUpdate(handle.lastState)
-
-  // Emit a DOM event so inline scripts can react to model changes
-  // (e.g. re-rendering dynamic lists beyond what data-bind covers).
-  window.dispatchEvent(new CustomEvent('perhap:model', {
-    detail: {
-      entity_id: update.entity_id,
-      context: update.context,
-      domain: update.domain,
-      reduction: update.reduction,
-      pending: update.pending,
-      valid: update.valid,
-    }
-  }))
+  dispatchModelEvent(update.entity_id, update.context, update.reduction, update.pending, update.valid)
 }
 
 function isNewer(a: string, b: string): boolean {

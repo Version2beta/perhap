@@ -191,6 +191,8 @@
 
   <script type="module" src="perhap.js"></script>
   <script type="module">
+    import { watch, tell } from './perhap.js'
+
     // In a real app this ID comes from the user's session.
     // For the demo we generate one per browser session and persist it.
     const CART_ENTITY_ID = (() => {
@@ -203,65 +205,96 @@
       return id
     })()
 
+    // Frontend reducer — mirrors the Go cart reducer for optimistic updates.
+    function cartReducer(model, eventType, data) {
+      const items = Object.fromEntries(
+        Object.entries(model.items ?? {}).map(([k, v]) => [k, { ...v }])
+      )
+      if (eventType === 'item_added') {
+        if (items[data.product_id]) {
+          items[data.product_id].quantity += data.quantity
+        } else {
+          items[data.product_id] = {
+            product_id: data.product_id, name: data.name,
+            price: data.price, quantity: data.quantity
+          }
+        }
+        items[data.product_id].line_total =
+          items[data.product_id].price * items[data.product_id].quantity
+      } else if (eventType === 'item_removed') {
+        delete items[data.product_id]
+      } else if (eventType === 'quantity_changed') {
+        if (items[data.product_id]) {
+          items[data.product_id].quantity = data.quantity
+          items[data.product_id].line_total =
+            items[data.product_id].price * data.quantity
+        }
+      }
+      const subtotal = Object.values(items).reduce((s, i) => s + i.line_total, 0)
+      const tax = Math.round(subtotal * 8.875) / 100
+      return { ...model, items, subtotal: Math.round(subtotal * 100) / 100,
+               tax, total: Math.round((subtotal + tax) * 100) / 100 }
+    }
+
     // Build the cart panel HTML, wiring the entity ID in.
     const container = document.getElementById('cart-container')
     container.innerHTML = `
-      <div data-watch="store/${CART_ENTITY_ID}" id="cart">
+      <div id="cart">
         <div class="cart-panel">
           <h2>Your Cart</h2>
           <div class="cart-items" id="cart-items">
             <span class="cart-empty">Your cart is empty.</span>
           </div>
           <hr class="cart-divider">
-          <div class="cart-line"><span>Subtotal</span><span>$<span data-bind="subtotal">0.00</span></span></div>
-          <div class="cart-line"><span>Tax (8.875%)</span><span>$<span data-bind="tax">0.00</span></span></div>
-          <div class="cart-line total"><span>Total</span><span>$<span data-bind="total">0.00</span></span></div>
+          <div class="cart-line"><span>Subtotal</span><span>$<span id="cart-subtotal">0.00</span></span></div>
+          <div class="cart-line"><span>Tax (8.875%)</span><span>$<span id="cart-tax">0.00</span></span></div>
+          <div class="cart-line total"><span>Total</span><span>$<span id="cart-total">0.00</span></span></div>
         </div>
       </div>
     `
+
+    function renderCart(reduction) {
+      const items = reduction?.items ?? {}
+      const keys = Object.keys(items)
+      const itemsEl = document.getElementById('cart-items')
+
+      if (keys.length === 0) {
+        itemsEl.innerHTML = '<span class="cart-empty">Your cart is empty.</span>'
+      } else {
+        itemsEl.innerHTML = keys.map(id => {
+          const item = items[id]
+          return `
+            <div class="cart-item">
+              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-right">
+                <div>$${(item.line_total ?? 0).toFixed(2)}</div>
+                <div class="cart-item-qty">
+                  qty ${item.quantity}
+                  <button class="btn-remove"
+                    data-tell="item_removed"
+                    data-tell-target="store/${CART_ENTITY_ID}"
+                    data-tell-data='{"product_id":"${id}"}'>×</button>
+                </div>
+              </div>
+            </div>
+          `
+        }).join('')
+        // data-tell wiring handled by SDK's MutationObserver
+      }
+
+      document.getElementById('cart-subtotal').textContent = (reduction?.subtotal ?? 0).toFixed(2)
+      document.getElementById('cart-tax').textContent      = (reduction?.tax      ?? 0).toFixed(2)
+      document.getElementById('cart-total').textContent    = (reduction?.total    ?? 0).toFixed(2)
+    }
+
+    // Subscribe to the cart entity with the frontend reducer for optimistic updates.
+    // The callback triggers a re-render on every state change (optimistic or confirmed).
+    watch('store', CART_ENTITY_ID, (state) => renderCart(state.reduction), cartReducer)
 
     // Wire add-to-cart buttons to the correct entity ID.
     document.querySelectorAll('[data-tell-target-ref="cart"]').forEach(btn => {
       btn.setAttribute('data-tell-target', `store/${CART_ENTITY_ID}`)
       btn.removeAttribute('data-tell-target-ref')
-    })
-
-    // Re-render cart items when the model updates.
-    // This is imperative because we're rendering a dynamic list —
-    // beyond what data-bind handles declaratively.
-    window.addEventListener('perhap:model', (e) => {
-      const detail = e.detail
-      if (detail.entity_id !== CART_ENTITY_ID) return
-
-      const itemsEl = document.getElementById('cart-items')
-      const items = detail.reduction?.items ?? {}
-      const keys = Object.keys(items)
-
-      if (keys.length === 0) {
-        itemsEl.innerHTML = '<span class="cart-empty">Your cart is empty.</span>'
-        return
-      }
-
-      itemsEl.innerHTML = keys.map(id => {
-        const item = items[id]
-        return `
-          <div class="cart-item">
-            <div class="cart-item-name">${item.name}</div>
-            <div class="cart-item-right">
-              <div>$${item.line_total.toFixed(2)}</div>
-              <div class="cart-item-qty">
-                qty ${item.quantity}
-                <button class="btn-remove"
-                  data-tell="item_removed"
-                  data-tell-target="store/${CART_ENTITY_ID}"
-                  data-tell-data='{"product_id":"${id}"}'>×</button>
-              </div>
-            </div>
-          </div>
-        `
-      }).join('')
-
-      // data-tell wiring is handled automatically by the SDK's MutationObserver.
     })
   </script>
 </body>
