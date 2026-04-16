@@ -191,7 +191,7 @@
 
   <script type="module" src="perhap.js"></script>
   <script type="module">
-    import { watch, tell } from './perhap.js'
+    import { watch, tell, ready } from './perhap.js'
 
     // In a real app this ID comes from the user's session.
     // For the demo we generate one per browser session and persist it.
@@ -287,14 +287,17 @@
       document.getElementById('cart-total').textContent    = (reduction?.total    ?? 0).toFixed(2)
     }
 
-    // Subscribe to the cart entity with the frontend reducer for optimistic updates.
-    // The callback triggers a re-render on every state change (optimistic or confirmed).
-    watch('store', CART_ENTITY_ID, (state) => renderCart(state.reduction), cartReducer)
+    // Wait for the NATS connection before subscribing and wiring buttons.
+    // configure() is async; calling watch() before nc is set silently no-ops.
+    ready.then(() => {
+      // Subscribe to the cart entity with the frontend reducer for optimistic updates.
+      watch('store', CART_ENTITY_ID, (state) => renderCart(state.reduction), cartReducer)
 
-    // Wire add-to-cart buttons to the correct entity ID.
-    document.querySelectorAll('[data-tell-target-ref="cart"]').forEach(btn => {
-      btn.setAttribute('data-tell-target', `store/${CART_ENTITY_ID}`)
-      btn.removeAttribute('data-tell-target-ref')
+      // Wire add-to-cart buttons to the correct entity ID.
+      document.querySelectorAll('[data-tell-target-ref="cart"]').forEach(btn => {
+        btn.setAttribute('data-tell-target', `store/${CART_ENTITY_ID}`)
+        btn.removeAttribute('data-tell-target-ref')
+      })
     })
   </script>
 </body>

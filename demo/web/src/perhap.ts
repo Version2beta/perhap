@@ -52,6 +52,11 @@ let nc: NatsConnection | null = null
 const sc = StringCodec()
 const watches = new Map<Element, WatchHandle>()
 
+// Resolves once the NATS connection is established.
+// Use: `await ready` before calling watch() from inline scripts.
+let _readyResolve: () => void
+export const ready: Promise<void> = new Promise(r => { _readyResolve = r })
+
 export async function configure(opts?: { server?: string; credentials?: string }) {
   const server = opts?.server
     ?? document.querySelector<HTMLMetaElement>('meta[name="perhap-server"]')?.content
@@ -59,6 +64,7 @@ export async function configure(opts?: { server?: string; credentials?: string }
 
   nc = await connect({ servers: server })
   console.log('[perhap] connected to', server)
+  _readyResolve()
 }
 
 // ── Core API ───────────────────────────────────────────────────────────────
