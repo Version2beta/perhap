@@ -1,0 +1,19 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "esbuild src/perhap.ts --bundle --format=esm --outfile=perhap.js --platform=browser --external:crypto",
+    "watch": "esbuild src/perhap.ts --bundle --format=esm --outfile=perhap.js --platform=browser --external:crypto --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "esbuild": "^0.28.0",
+    "nats.ws": "^1.30.3",
+    "typescript": "^6.0.2"
+  }
+}

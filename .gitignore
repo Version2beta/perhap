@@ -1,0 +1,10 @@
+# Go
+/demo/cart/cart
+*.test
+
+# Frontend
+/demo/web/node_modules/
+/demo/web/perhap.js
+
+# NATS
+jetstream/
