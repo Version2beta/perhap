@@ -175,16 +175,31 @@ func (s *Service[M]) Run(ctx context.Context) error {
 
 func (s *Service[M]) getOrCreateSupervisor(entityID string) *supervisor[M] {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	sv, ok := s.supervisors[entityID]
-	if !ok {
-		sv = newSupervisor(entityID, s.nc, s.config, func() {
-			s.mu.Lock()
-			delete(s.supervisors, entityID)
-			s.mu.Unlock()
-		})
-		s.supervisors[entityID] = sv
+	s.mu.Unlock()
+	if ok {
+		return sv
 	}
+
+	// No active supervisor — replay from JetStream to restore entity state so that
+	// events arriving after passivation or a server restart are applied on top of
+	// existing history rather than against an empty model.
+	snapshot, snapshotUUID, err := s.replayFromJetStream(entityID)
+	if err != nil {
+		log.Printf("perhap: getOrCreateSupervisor replay %s/%s: %v", s.config.Context, entityID, err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sv, ok = s.supervisors[entityID]; ok {
+		return sv // another goroutine beat us while we were replaying
+	}
+	sv = newSupervisorWithSnapshot(entityID, s.nc, s.config, snapshot, snapshotUUID, func() {
+		s.mu.Lock()
+		delete(s.supervisors, entityID)
+		s.mu.Unlock()
+	})
+	s.supervisors[entityID] = sv
 	return sv
 }
 

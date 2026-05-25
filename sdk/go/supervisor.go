@@ -11,6 +11,20 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// deepCopy returns a deep copy of v by round-tripping through JSON.
+// This ensures that reference types inside M (maps, slices) are not shared
+// between the copy and the original, preventing reducer mutations from
+// corrupting the stored snapshot.
+func deepCopy[M any](v M) M {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return v // fallback: accept shared references if marshal fails
+	}
+	var out M
+	json.Unmarshal(data, &out) //nolint:errcheck
+	return out
+}
+
 type supervisor[M any] struct {
 	entityID    string
 	nc          *nats.Conn
@@ -32,15 +46,25 @@ type supervisor[M any] struct {
 }
 
 func newSupervisor[M any](entityID string, nc *nats.Conn, config ServiceConfig[M], onPassivate func()) *supervisor[M] {
+	var zero M
+	return newSupervisorWithSnapshot(entityID, nc, config, zero, "", onPassivate)
+}
+
+// newSupervisorWithSnapshot creates a supervisor pre-seeded with a replayed snapshot so that
+// new events arriving after passivation or a server restart are applied on top of existing state.
+func newSupervisorWithSnapshot[M any](entityID string, nc *nats.Conn, config ServiceConfig[M], snapshot M, snapshotUUID string, onPassivate func()) *supervisor[M] {
 	sv := &supervisor[M]{
-		entityID:    entityID,
-		nc:          nc,
-		config:      config,
-		onPassivate: onPassivate,
-		windowUUIDs: make(map[string]bool),
-		valid:       true,
-		pending:     false,
-		inbox:       make(chan Event, 64),
+		entityID:     entityID,
+		nc:           nc,
+		config:       config,
+		onPassivate:  onPassivate,
+		snapshot:     snapshot,
+		snapshotUUID: snapshotUUID,
+		lastValid:    snapshot,
+		windowUUIDs:  make(map[string]bool),
+		valid:        true,
+		pending:      false,
+		inbox:        make(chan Event, 64),
 	}
 	go sv.run()
 	return sv
@@ -104,7 +128,9 @@ func (sv *supervisor[M]) processEvent(event Event) {
 	})
 
 	// Re-reduce from snapshot through full window.
-	model := sv.snapshot
+	// Deep-copy via JSON so that Go map references inside M are not shared with
+	// sv.snapshot — reducer mutations (map writes) must not corrupt the stored snapshot.
+	model := deepCopy(sv.snapshot)
 	var newEvents []Event
 	for _, e := range sv.window {
 		var evts []Event
@@ -147,7 +173,7 @@ func (sv *supervisor[M]) maybeAdvanceSnapshot() {
 	}
 	n := (sv.config.WindowSize + 1) / 2 // ceil(WindowSize/2)
 	toFold := sv.window[:n]
-	model := sv.snapshot
+	model := deepCopy(sv.snapshot)
 	for _, e := range toFold {
 		model, _, _ = sv.config.Reducer(e.Type, model, e)
 		delete(sv.windowUUIDs, e.ID)
@@ -177,9 +203,6 @@ func (sv *supervisor[M]) windowUUIDList() []string {
 }
 
 func (sv *supervisor[M]) currentModel() M {
-	if sv.valid {
-		return sv.lastValid
-	}
 	return sv.lastValid
 }
 

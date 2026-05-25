@@ -3,6 +3,8 @@ import { connect, StringCodec, NatsConnection, Subscription } from 'nats.ws'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface ModelState {
+  entityId: string
+  context: string
   reduction: Record<string, unknown> | null
   backendPending: boolean
   valid: boolean
@@ -85,6 +87,8 @@ export function watch(
   console.log(`[perhap] watch ${context}/${entityId}`)
 
   const state: ModelState = {
+    entityId,
+    context,
     reduction: null,
     backendPending: false,
     valid: true,
@@ -149,7 +153,18 @@ export function watch(
     .catch(err => {
       console.warn('[perhap] hydration failed:', err)
       handle.hydrated = true
+      // Apply buffered updates that arrived while waiting — don't discard them.
+      // Sort ascending so older updates are applied first and newer ones win.
+      const buffered = handle.buffer.slice().sort((a, b) =>
+        isNewer(a.reduced_through, b.reduced_through) ? 1 : -1
+      )
       handle.buffer = []
+      if (buffered.length > 0) {
+        console.log(`[perhap] hydration timeout — applying ${buffered.length} buffered update(s) instead`)
+        for (const update of buffered) {
+          applyUpdate(handle, update)
+        }
+      }
     })
 
   return () => {
@@ -224,6 +239,8 @@ function applyUpdate(handle: WatchHandle, update: ModelUpdate) {
   }
   console.log(`[perhap] applyUpdate: rt=${update.reduced_through || '(empty)'} (prev=${prev ?? 'null'}) pending=${update.pending}`, update.reduction)
   handle.lastState = {
+    entityId: handle.entityId,
+    context: handle.context,
     reduction: update.reduction,
     backendPending: update.pending,
     valid: update.valid,
@@ -295,6 +312,8 @@ function applyBindings(el: Element, state: ModelState) {
   const reduction = state.reduction ?? {}
 
   // Write state attributes on the watch element itself.
+  el.setAttribute('data-entity-id', state.entityId)
+  el.setAttribute('data-context', state.context)
   el.setAttribute('data-pending', String(state.pending))
   el.setAttribute('data-valid', String(state.valid))
 
@@ -329,10 +348,12 @@ function applyBindings(el: Element, state: ModelState) {
 
 function metaProp(state: ModelState, prop: string): unknown {
   switch (prop) {
-    case '@pending':      return state.pending
-    case '@valid':        return state.valid
-    case '@reduced-through': return state.reducedThrough ?? ''
-    default:              return ''
+    case '@entity-id':        return state.entityId
+    case '@context':          return state.context
+    case '@pending':          return state.pending
+    case '@valid':            return state.valid
+    case '@reduced-through':  return state.reducedThrough ?? ''
+    default:                  return ''
   }
 }
 
