@@ -4,6 +4,8 @@
 **Status**: Working Draft  
 **Repository**: github.com/version2beta/perhap
 
+**Implementation note**: this specification is broader than the current reference SDK. The shipped browser SDK currently implements in-memory optimistic pending for active watches; persistent outbox and offline sections remain design targets rather than completed runtime features.
+
 ---
 
 ## Table of Contents

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: npm
+          cache-dependency-path: demo/web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: demo/web
+        run: npm ci
+
+      - name: Go tests
+        run: go test ./...
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Frontend tests
+        working-directory: demo/web
+        run: npm test
+
+      - name: Frontend typecheck
+        working-directory: demo/web
+        run: npx tsc --noEmit
+
+      - name: Frontend build
+        working-directory: demo/web
+        run: npm run build

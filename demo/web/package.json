@@ -5,15 +5,19 @@
   "main": "index.js",
   "scripts": {
     "build": "esbuild src/perhap.ts --bundle --format=esm --outfile=perhap.js --platform=browser --external:crypto",
-    "watch": "esbuild src/perhap.ts --bundle --format=esm --outfile=perhap.js --platform=browser --external:crypto --watch"
+    "watch": "esbuild src/perhap.ts --bundle --format=esm --outfile=perhap.js --platform=browser --external:crypto --watch",
+    "test": "node --test --experimental-strip-types src/*.test.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "esbuild": "^0.28.0",
     "nats.ws": "^1.30.3",
     "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
   }
 }

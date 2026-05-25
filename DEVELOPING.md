@@ -64,6 +64,7 @@ Key files:
 | `domain.go` | Domain builder: NewDomain, On, Validate, ServiceConfig |
 | `service.go` | Service: creates stream, subscribes, dispatches to supervisors |
 | `supervisor.go` | Per-entity goroutine: window, snapshot, reduction, passivation |
+| `service_integration_test.go` | Embedded-NATS coverage for replay and `_exception` storage |
 
 ### Supervisor lifecycle (mental model)
 
@@ -84,18 +85,30 @@ One stream per context, named `PERHAP_{CONTEXT}` (e.g. `PERHAP_STORE`).
 Subject filter: `perhap.{context}.>`.
 Internal subjects (`_model`, `_exception`) match this filter but are skipped by the queue subscriber.
 Hydration requests use `_perhap.` prefix to stay outside the stream filter.
+The default replication factor is `1`; production deployments should override it with `WithStreamReplicas(...)`.
 
 ## TypeScript SDK development
 
-The TypeScript SDK is a single file: `demo/web/src/perhap.ts`.
+The TypeScript SDK is split into focused modules under `demo/web/src/`.
 
 ```
 cd demo/web
+npm test         # pure state + UUID tests under Node
 npm run build    # one-shot
 npm run watch    # watch mode
 ```
 
 Outputs to `demo/web/perhap.js` (ES module, bundled).
+
+Key files:
+
+| File | Purpose |
+|---|---|
+| `perhap.ts` | public entry point and auto-init |
+| `core.ts` | connection lifecycle, watch/tell API |
+| `model-state.ts` | pure state transitions, pending tracking, buffer helpers |
+| `dom.ts` | `data-watch` / `data-tell` binding layer |
+| `uuid.ts` | monotonic UUIDv6 generator for the browser |
 
 ### Hydration sequence
 
@@ -108,7 +121,15 @@ Outputs to `demo/web/perhap.js` (ES module, bundled).
 
 Each `ModelUpdate` carries `reduced_through` — the UUID of the last event applied.
 Because UUIDv6 is timestamp-ordered, string comparison (`a > b`) correctly orders updates.
-`applyUpdate` drops any update whose `reduced_through` is not newer than the current state.
+Confirmed updates clear any optimistic event IDs that sort at or before `reduced_through`.
+Stale updates are dropped if `reduced_through` is not newer than the current state.
+
+### Pending semantics
+
+`ModelState.pending` is the union of:
+
+- backend pending from the wire-format `pending` flag
+- in-memory optimistic events that have been published locally but not yet confirmed by a newer backend update
 
 ## Troubleshooting
 

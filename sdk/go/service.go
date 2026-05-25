@@ -35,9 +35,9 @@ type Validator[M any] func(model M) []ValidationError
 type LateEventPolicy int
 
 const (
-	LateEventReject          LateEventPolicy = iota // store + emit exception
-	LateEventRebuild                                // rebuild from earlier snapshot
-	LateEventAcceptWithFlag                         // apply at head, flag in metadata
+	LateEventReject         LateEventPolicy = iota // store + emit exception
+	LateEventRebuild                               // rebuild from earlier snapshot
+	LateEventAcceptWithFlag                        // apply at head, flag in metadata
 )
 
 // ServiceConfig wires together a domain service.
@@ -50,6 +50,7 @@ type ServiceConfig[M any] struct {
 	WindowIdleClose  time.Duration // idle before pending→false; default 500ms
 	PassivateTimeout time.Duration // idle after window close before supervisor terminates; default 5m
 	LateEventPolicy  LateEventPolicy
+	StreamReplicas   int // JetStream replication factor for the context stream; default 1
 }
 
 func (c *ServiceConfig[M]) withDefaults() {
@@ -64,6 +65,9 @@ func (c *ServiceConfig[M]) withDefaults() {
 	}
 	if c.Validator == nil {
 		c.Validator = func(M) []ValidationError { return nil }
+	}
+	if c.StreamReplicas == 0 {
+		c.StreamReplicas = 1
 	}
 }
 
@@ -92,11 +96,11 @@ func NewService[M any](nc *nats.Conn, config ServiceConfig[M]) (*Service[M], err
 	_, err = js.StreamInfo(streamName)
 	if err != nil {
 		_, err = js.AddStream(&nats.StreamConfig{
-			Name:       streamName,
-			Subjects:   []string{subjectFilter},
-			Storage:    nats.FileStorage,
-			Replicas:   1,
-			NoAck:      false,
+			Name:     streamName,
+			Subjects: []string{subjectFilter},
+			Storage:  nats.FileStorage,
+			Replicas: config.StreamReplicas,
+			NoAck:    false,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create stream: %w", err)
@@ -138,7 +142,7 @@ func (s *Service[M]) Run(ctx context.Context) error {
 		var event Event
 		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			log.Printf("perhap: unmarshal event: %v", err)
-			return  // do NOT Nak — this is plain NATS, Nak publishes "-NAK" to the reply inbox
+			return // do NOT Nak — this is plain NATS, Nak publishes "-NAK" to the reply inbox
 		}
 
 		log.Printf("perhap: dispatching %s id=%s to supervisor %s", event.Type, event.ID, entityID)

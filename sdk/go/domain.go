@@ -39,6 +39,7 @@ type Domain[M any] struct {
 	windowIdleClose  time.Duration
 	passivateTimeout time.Duration
 	lateEventPolicy  LateEventPolicy
+	streamReplicas   int
 	validator        Validator[M]
 }
 
@@ -121,6 +122,13 @@ func (d *Domain[M]) WithLateEventPolicy(p LateEventPolicy) *Domain[M] {
 	return d
 }
 
+// WithStreamReplicas overrides the JetStream replication factor for the
+// context stream. Default is 1 for local development.
+func (d *Domain[M]) WithStreamReplicas(n int) *Domain[M] {
+	d.streamReplicas = n
+	return d
+}
+
 // RegisteredEventTypes returns the event types that have handlers registered,
 // sorted alphabetically. Useful for documentation, health endpoints, and tooling.
 func (d *Domain[M]) RegisteredEventTypes() []string {
@@ -152,6 +160,7 @@ func (d *Domain[M]) ServiceConfig() ServiceConfig[M] {
 		WindowIdleClose:  d.windowIdleClose,
 		PassivateTimeout: d.passivateTimeout,
 		LateEventPolicy:  d.lateEventPolicy,
+		StreamReplicas:   d.streamReplicas,
 	}
 }
 

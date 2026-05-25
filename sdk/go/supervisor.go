@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -34,15 +33,15 @@ type supervisor[M any] struct {
 	// State
 	snapshot     M
 	snapshotUUID string
-	window       []Event   // sorted by UUID
+	window       []Event // sorted by UUID
 	windowUUIDs  map[string]bool
 	lastValid    M
 	valid        bool
 	pending      bool
 
-	inbox       chan Event
-	idleTimer   *time.Timer
-	closeTimer  *time.Timer
+	inbox      chan Event
+	idleTimer  *time.Timer
+	closeTimer *time.Timer
 }
 
 func newSupervisor[M any](entityID string, nc *nats.Conn, config ServiceConfig[M], onPassivate func()) *supervisor[M] {
@@ -151,7 +150,7 @@ func (sv *supervisor[M]) processEvent(event Event) {
 	} else {
 		log.Printf("perhap: VALIDATION FAILED %s/%s: %v", sv.config.Context, sv.entityID, errs)
 		sv.valid = false
-		sv.emitException(errs, newEvents)
+		sv.emitException(errs)
 	}
 
 	// Publish any new events from the reducer.
@@ -229,6 +228,10 @@ func (sv *supervisor[M]) publishModel() {
 }
 
 func (sv *supervisor[M]) publishEvent(event Event) {
+	sv.publishStoredEvent(event)
+}
+
+func (sv *supervisor[M]) publishStoredEvent(event Event) {
 	subject := fmt.Sprintf("perhap.%s.%s.%s", sv.config.Context, event.EntityID, event.Type)
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -246,7 +249,7 @@ func (sv *supervisor[M]) publishEvent(event Event) {
 	}
 }
 
-func (sv *supervisor[M]) emitException(errs []ValidationError, windowEvents []Event) {
+func (sv *supervisor[M]) emitException(errs []ValidationError) {
 	msgs := make([]string, len(errs))
 	for i, e := range errs {
 		msgs[i] = e.Error()
@@ -276,13 +279,5 @@ func (sv *supervisor[M]) emitException(errs []ValidationError, windowEvents []Ev
 		Type:     "_exception",
 		Data:     data,
 	}
-	eventData, _ := json.Marshal(event)
-	subject := fmt.Sprintf("perhap.%s.%s._exception", sv.config.Context, sv.entityID)
-
-	// Publish as plain NATS (not JetStream — _exception is excluded from stream).
-	if err := sv.nc.Publish(subject, eventData); err != nil {
-		log.Printf("perhap: publish exception: %v", err)
-	}
-
-	_ = strings.Join(msgs, "; ") // suppress unused warning
+	sv.publishStoredEvent(event)
 }

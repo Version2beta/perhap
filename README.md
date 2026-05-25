@@ -109,6 +109,7 @@ When validation fails the model stays at the last valid state and an `_exception
 d.WithWindowSize(50)                        // snapshot after 50 events (default 100)
 d.WithWindowIdleClose(200 * time.Millisecond) // mark pending=false after 200ms idle (default 500ms)
 d.WithPassivateTimeout(10 * time.Minute)    // evict idle supervisors after 10m (default 5m)
+d.WithStreamReplicas(3)                     // JetStream replication factor (default 1)
 ```
 
 ### Event type
@@ -223,7 +224,7 @@ watch('store', 'cart-abc123', renderCart, (reduction, eventType, data) => {
 })
 ```
 
-When `tell()` is called, the frontend reducer applies immediately and `state.pending` is set to `true`. Once the server's authoritative update arrives it replaces the optimistic state.
+When `tell()` is called, the frontend reducer applies immediately and `state.pending` is set to `true`. The SDK keeps that optimistic pending state in memory for active watches until a newer backend update confirms it.
 
 ### Global model event
 
@@ -245,9 +246,21 @@ interface ModelState {
   backendPending: boolean                    // server window is open
   valid: boolean                             // last reduction passed validation
   reducedThrough: string | null              // UUIDv6 of most recent event applied
-  pending: boolean                           // backendPending || optimistic update in flight
+  pending: boolean                           // backendPending || in-memory optimistic events in flight
 }
 ```
+
+### Source layout
+
+The browser SDK is split into a small set of focused modules:
+
+| File | Purpose |
+|---|---|
+| `demo/web/src/perhap.ts` | public entry point and browser auto-init |
+| `demo/web/src/core.ts` | NATS connection, watch/tell API, optimistic tracking |
+| `demo/web/src/model-state.ts` | pure state transitions and buffer handling |
+| `demo/web/src/dom.ts` | declarative DOM bindings and mutation wiring |
+| `demo/web/src/uuid.ts` | monotonic UUIDv6 generation for the browser |
 
 ### CSS state hooks
 
@@ -272,7 +285,7 @@ nats-server -c demo/nats.conf
 cd demo/cart && go run .
 
 # 3. Frontend
-cd demo/web && npm install && npm run build && npx serve .
+cd demo/web && npm install && npm test && npm run build && npx serve .
 ```
 
 Open the URL printed by `serve`. Each browser tab gets its own cart (session-scoped entity ID).
