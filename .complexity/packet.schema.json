@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://perhap.local/complexity-packet.schema.json",
+  "title": "Complexity Observation Packet",
+  "type": "object",
+  "required": [
+    "title",
+    "scope",
+    "observations"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "kind",
+        "roots"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "whole_repo",
+            "targeted"
+          ]
+        },
+        "roots": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "fact",
+          "evidence",
+          "impacts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^O[0-9]{2,}$"
+          },
+          "fact": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "anchor",
+                "kind"
+              ],
+              "properties": {
+                "anchor": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "enum": [
+                    "code",
+                    "tests",
+                    "docs/contracts",
+                    "validation/runtime"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "impacts": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -2,
+              "maximum": 2
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

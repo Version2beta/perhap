@@ -1,0 +1,50 @@
+{
+  "title": "Example: insufficient coverage",
+  "scope": {
+    "kind": "whole_repo",
+    "roots": [
+      "sdk/go",
+      "demo/web/src",
+      "demo/cart",
+      "README.md",
+      "DEVELOPING.md",
+      "spec/specification.md"
+    ],
+    "notes": "Deliberately thin packet showing how low evidence density suppresses confidence."
+  },
+  "observations": [
+    {
+      "id": "O01",
+      "fact": "The browser watch entrypoint is broken into short named phases.",
+      "evidence": [
+        { "anchor": "demo/web/src/core.ts:59-79", "kind": "code" }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "context_economy": 1
+      }
+    },
+    {
+      "id": "O02",
+      "fact": "Supervisor runtime behavior still depends on a goroutine and timers.",
+      "evidence": [
+        { "anchor": "sdk/go/supervisor.go:82-112", "kind": "code" }
+      ],
+      "impacts": {
+        "concurrency": -2,
+        "state": -1
+      }
+    },
+    {
+      "id": "O03",
+      "fact": "README documents the supervisor lifecycle and pending semantics.",
+      "evidence": [
+        { "anchor": "README.md:133-146", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "architecture_docs": 2,
+        "orientation": 1
+      }
+    }
+  ]
+}

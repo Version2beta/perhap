@@ -1,0 +1,1031 @@
+{
+  "packet": {
+    "title": "Perhap baseline whole repo v1",
+    "scope": {
+      "kind": "whole_repo",
+      "roots": [
+        "sdk/go",
+        "demo/web/src",
+        "demo/cart",
+        "README.md",
+        "DEVELOPING.md",
+        "spec/specification.md"
+      ],
+      "notes": "Canonical whole-repo baseline for future iterative refactors."
+    }
+  },
+  "coverage": {
+    "scopeFileCount": 20,
+    "observedFileCount": 15,
+    "observationCount": 16,
+    "facetCount": 27,
+    "missingEvidencePaths": []
+  },
+  "dimensions": {
+    "cognitive_load": {
+      "latent": 0.276,
+      "display": 80,
+      "confidence": 0.66,
+      "confidenceLabel": "medium",
+      "topContributors": [
+        {
+          "facet": "control_flow",
+          "weight": 3,
+          "contribution": 1.875
+        },
+        {
+          "facet": "concurrency",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "context_economy",
+          "weight": 2,
+          "contribution": 1
+        },
+        {
+          "facet": "locality",
+          "weight": 2,
+          "contribution": 1
+        },
+        {
+          "facet": "shape",
+          "weight": 2,
+          "contribution": 1
+        }
+      ]
+    },
+    "context_load": {
+      "latent": 0.219,
+      "display": 78,
+      "confidence": 0.527,
+      "confidenceLabel": "medium",
+      "topContributors": [
+        {
+          "facet": "separation",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "radius",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "dependencies",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "locality",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "context_economy",
+          "weight": 3,
+          "contribution": 1.5
+        }
+      ]
+    },
+    "confidence": {
+      "latent": 0.353,
+      "display": 82,
+      "confidence": 0.843,
+      "confidenceLabel": "high",
+      "topContributors": [
+        {
+          "facet": "tests",
+          "weight": 3,
+          "contribution": 3
+        },
+        {
+          "facet": "boundaries",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "demonstrations",
+          "weight": 2,
+          "contribution": 1
+        },
+        {
+          "facet": "idiomaticity",
+          "weight": 1,
+          "contribution": 0.75
+        },
+        {
+          "facet": "contracts",
+          "weight": 3,
+          "contribution": 0.642
+        }
+      ]
+    },
+    "orientation": {
+      "latent": 0.511,
+      "display": 86,
+      "confidence": 0.678,
+      "confidenceLabel": "medium",
+      "topContributors": [
+        {
+          "facet": "architecture_docs",
+          "weight": 3,
+          "contribution": 2.25
+        },
+        {
+          "facet": "naming",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "shape",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "state_vocabulary",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "orientation",
+          "weight": 3,
+          "contribution": 1.5
+        }
+      ]
+    },
+    "agentic_readiness": {
+      "latent": 0.379,
+      "display": 83,
+      "confidence": 0.756,
+      "confidenceLabel": "high",
+      "topContributors": [
+        {
+          "facet": "tests",
+          "weight": 3,
+          "contribution": 3
+        },
+        {
+          "facet": "handoff",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "idiomaticity",
+          "weight": 2,
+          "contribution": 1.5
+        },
+        {
+          "facet": "boundaries",
+          "weight": 2,
+          "contribution": 1
+        },
+        {
+          "facet": "context_economy",
+          "weight": 2,
+          "contribution": 1
+        }
+      ]
+    }
+  },
+  "families": {
+    "logic": {
+      "latent": 0.108,
+      "display": 75,
+      "confidence": 0.67,
+      "confidenceLabel": "medium",
+      "observedFacets": 5,
+      "totalFacets": 5
+    },
+    "context": {
+      "latent": 0.1,
+      "display": 75,
+      "confidence": 0.43,
+      "confidenceLabel": "low",
+      "observedFacets": 5,
+      "totalFacets": 5
+    },
+    "meaning": {
+      "latent": 0.375,
+      "display": 83,
+      "confidence": 0.517,
+      "confidenceLabel": "medium",
+      "observedFacets": 4,
+      "totalFacets": 6
+    },
+    "correctness": {
+      "latent": 0.397,
+      "display": 83,
+      "confidence": 0.883,
+      "confidenceLabel": "high",
+      "observedFacets": 6,
+      "totalFacets": 6
+    },
+    "continuity": {
+      "latent": 0.483,
+      "display": 86,
+      "confidence": 0.65,
+      "confidenceLabel": "medium",
+      "observedFacets": 5,
+      "totalFacets": 5
+    }
+  },
+  "facets": {
+    "state": {
+      "family": "logic",
+      "raw": 0,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 4,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O09",
+        "O13"
+      ]
+    },
+    "side_effects": {
+      "family": "logic",
+      "raw": 1,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.25,
+      "display": 79,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 5,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O05",
+        "O15"
+      ]
+    },
+    "control_flow": {
+      "family": "logic",
+      "raw": 5,
+      "relevantObservations": 4,
+      "maxAbs": 8,
+      "latent": 0.625,
+      "display": 90,
+      "confidence": 0.9,
+      "confidenceLabel": "high",
+      "anchors": 9,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O06",
+        "O08",
+        "O09",
+        "O13"
+      ]
+    },
+    "ordering": {
+      "family": "logic",
+      "raw": 1,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 0.167,
+      "display": 77,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 6,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O08",
+        "O09",
+        "O16"
+      ]
+    },
+    "concurrency": {
+      "family": "logic",
+      "raw": -1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O13"
+      ]
+    },
+    "separation": {
+      "family": "context",
+      "raw": 2,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 5,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O06",
+        "O08"
+      ]
+    },
+    "radius": {
+      "family": "context",
+      "raw": -1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O14"
+      ]
+    },
+    "dependencies": {
+      "family": "context",
+      "raw": -1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O14"
+      ]
+    },
+    "locality": {
+      "family": "context",
+      "raw": 2,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 6,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01",
+        "O06"
+      ]
+    },
+    "context_economy": {
+      "family": "context",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 3,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O06"
+      ]
+    },
+    "naming": {
+      "family": "meaning",
+      "raw": 4,
+      "relevantObservations": 4,
+      "maxAbs": 8,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.9,
+      "confidenceLabel": "high",
+      "anchors": 9,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O02",
+        "O04",
+        "O08",
+        "O09"
+      ]
+    },
+    "language": {
+      "family": "meaning",
+      "raw": 0,
+      "relevantObservations": 0,
+      "maxAbs": 0,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0,
+      "confidenceLabel": "insufficient",
+      "anchors": 0,
+      "evidenceKinds": 0,
+      "observationIds": []
+    },
+    "shape": {
+      "family": "meaning",
+      "raw": 2,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 5,
+      "evidenceKinds": 4,
+      "observationIds": [
+        "O04",
+        "O05"
+      ]
+    },
+    "state_vocabulary": {
+      "family": "meaning",
+      "raw": 3,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 7,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O04",
+        "O07",
+        "O09"
+      ]
+    },
+    "argument_patterns": {
+      "family": "meaning",
+      "raw": 0,
+      "relevantObservations": 0,
+      "maxAbs": 0,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0,
+      "confidenceLabel": "insufficient",
+      "anchors": 0,
+      "evidenceKinds": 0,
+      "observationIds": []
+    },
+    "idiomaticity": {
+      "family": "meaning",
+      "raw": 3,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.75,
+      "display": 93,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 6,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O02",
+        "O05"
+      ]
+    },
+    "boundaries": {
+      "family": "correctness",
+      "raw": 3,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 9,
+      "evidenceKinds": 4,
+      "observationIds": [
+        "O02",
+        "O10",
+        "O11"
+      ]
+    },
+    "contracts": {
+      "family": "correctness",
+      "raw": 3,
+      "relevantObservations": 7,
+      "maxAbs": 14,
+      "latent": 0.214,
+      "display": 78,
+      "confidence": 1,
+      "confidenceLabel": "high",
+      "anchors": 14,
+      "evidenceKinds": 4,
+      "observationIds": [
+        "O02",
+        "O03",
+        "O04",
+        "O10",
+        "O12",
+        "O14",
+        "O15"
+      ]
+    },
+    "validation": {
+      "family": "correctness",
+      "raw": 0,
+      "relevantObservations": 4,
+      "maxAbs": 8,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0.9,
+      "confidenceLabel": "high",
+      "anchors": 9,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O03",
+        "O05",
+        "O15",
+        "O16"
+      ]
+    },
+    "tests": {
+      "family": "correctness",
+      "raw": 6,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 1,
+      "display": 100,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 6,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O03",
+        "O05",
+        "O10"
+      ]
+    },
+    "demonstrations": {
+      "family": "correctness",
+      "raw": 3,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 7,
+      "evidenceKinds": 4,
+      "observationIds": [
+        "O03",
+        "O10",
+        "O11"
+      ]
+    },
+    "explainability": {
+      "family": "correctness",
+      "raw": 2,
+      "relevantObservations": 6,
+      "maxAbs": 12,
+      "latent": 0.167,
+      "display": 77,
+      "confidence": 1,
+      "confidenceLabel": "high",
+      "anchors": 14,
+      "evidenceKinds": 4,
+      "observationIds": [
+        "O02",
+        "O06",
+        "O08",
+        "O12",
+        "O15",
+        "O16"
+      ]
+    },
+    "orientation": {
+      "family": "continuity",
+      "raw": 2,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 7,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01",
+        "O11"
+      ]
+    },
+    "decision_memory": {
+      "family": "continuity",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 3,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O07"
+      ]
+    },
+    "current_state": {
+      "family": "continuity",
+      "raw": 1,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 0.167,
+      "display": 77,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 7,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O07",
+        "O12",
+        "O14"
+      ]
+    },
+    "handoff": {
+      "family": "continuity",
+      "raw": 3,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.8,
+      "confidenceLabel": "high",
+      "anchors": 10,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01",
+        "O07",
+        "O11"
+      ]
+    },
+    "architecture_docs": {
+      "family": "continuity",
+      "raw": 3,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.75,
+      "display": 93,
+      "confidence": 0.7,
+      "confidenceLabel": "medium",
+      "anchors": 6,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01",
+        "O07"
+      ]
+    }
+  },
+  "observations": [
+    {
+      "id": "O01",
+      "fact": "README and DEVELOPING map the Go runtime, browser SDK, and demo files to clear responsibilities.",
+      "evidence": [
+        {
+          "anchor": "README.md:253-263",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "DEVELOPING.md:61-67",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "DEVELOPING.md:103-111",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "architecture_docs": 2,
+        "orientation": 1,
+        "handoff": 1,
+        "locality": 1
+      }
+    },
+    {
+      "id": "O02",
+      "fact": "The Domain builder is narrow, well-commented, and explains its generic-method tradeoff directly in code.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/domain.go:11-30",
+          "kind": "code"
+        },
+        {
+          "anchor": "sdk/go/domain.go:61-89",
+          "kind": "code"
+        },
+        {
+          "anchor": "sdk/go/domain.go:143-190",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "naming": 1,
+        "idiomaticity": 2,
+        "contracts": 1,
+        "explainability": 1,
+        "boundaries": 1
+      }
+    },
+    {
+      "id": "O03",
+      "fact": "Domain tests cover typed dispatch, bad JSON handling, validator wiring, and reducer snapshotting.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/domain_test.go:19-133",
+          "kind": "tests"
+        },
+        {
+          "anchor": "go test ./...",
+          "kind": "validation/runtime"
+        }
+      ],
+      "impacts": {
+        "tests": 2,
+        "validation": 1,
+        "contracts": 1,
+        "demonstrations": 1
+      }
+    },
+    {
+      "id": "O04",
+      "fact": "Event and ModelUpdate are documented with UUIDv6 ordering semantics, making the wire vocabulary explicit.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/event.go:10-63",
+          "kind": "code"
+        },
+        {
+          "anchor": "README.md:120-128",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "state_vocabulary": 1,
+        "contracts": 1,
+        "naming": 1,
+        "shape": 1
+      }
+    },
+    {
+      "id": "O05",
+      "fact": "Browser model-state transitions are pure helpers with direct tests for optimistic confirmation and buffered ordering.",
+      "evidence": [
+        {
+          "anchor": "demo/web/src/model-state.ts:47-109",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/web/src/model-state.test.ts:27-73",
+          "kind": "tests"
+        },
+        {
+          "anchor": "npm test",
+          "kind": "validation/runtime"
+        }
+      ],
+      "impacts": {
+        "side_effects": 2,
+        "shape": 1,
+        "tests": 2,
+        "validation": 1,
+        "idiomaticity": 1
+      }
+    },
+    {
+      "id": "O06",
+      "fact": "The browser watch path is decomposed into named phases for registration, hydration, buffer drain, and optimistic local updates.",
+      "evidence": [
+        {
+          "anchor": "demo/web/src/core.ts:59-79",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/web/src/core.ts:159-235",
+          "kind": "code"
+        },
+        {
+          "anchor": "README.md:212-260",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "separation": 1,
+        "context_economy": 1,
+        "locality": 1,
+        "explainability": 1
+      }
+    },
+    {
+      "id": "O07",
+      "fact": "Pending semantics are described consistently in browser state, README, and DEVELOPING.",
+      "evidence": [
+        {
+          "anchor": "demo/web/src/model-state.ts:1-9",
+          "kind": "code"
+        },
+        {
+          "anchor": "README.md:227-250",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "DEVELOPING.md:127-132",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "state_vocabulary": 1,
+        "current_state": 1,
+        "architecture_docs": 1,
+        "decision_memory": 1,
+        "handoff": 1
+      }
+    },
+    {
+      "id": "O08",
+      "fact": "Service hydration and replay are split into lookup, response construction, decode, sort, reduce, and last-event helpers.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/service.go:208-339",
+          "kind": "code"
+        },
+        {
+          "anchor": "sdk/go/service_test.go:10-81",
+          "kind": "tests"
+        }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "ordering": 1,
+        "separation": 1,
+        "naming": 1,
+        "explainability": 1
+      }
+    },
+    {
+      "id": "O09",
+      "fact": "Supervisor event handling now advertises a short named pipeline instead of embedding all policy in one branch chain.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/supervisor.go:115-127",
+          "kind": "code"
+        },
+        {
+          "anchor": "DEVELOPING.md:69-80",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "state": 1,
+        "ordering": 1,
+        "naming": 1,
+        "state_vocabulary": 1
+      }
+    },
+    {
+      "id": "O10",
+      "fact": "Replay, recreated supervisors, and persisted _exception events are covered by embedded-NATS integration tests.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/service_integration_test.go:21-137",
+          "kind": "tests"
+        },
+        {
+          "anchor": "go test ./...",
+          "kind": "validation/runtime"
+        }
+      ],
+      "impacts": {
+        "tests": 2,
+        "demonstrations": 1,
+        "boundaries": 1,
+        "contracts": 1
+      }
+    },
+    {
+      "id": "O11",
+      "fact": "The demo is runnable end-to-end with explicit setup steps and a small concrete cart domain service.",
+      "evidence": [
+        {
+          "anchor": "DEVELOPING.md:3-40",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "README.md:276-288",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "demo/cart/main.go:14-50",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/cart/cart.go:48-133",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "demonstrations": 1,
+        "handoff": 1,
+        "orientation": 1,
+        "boundaries": 1
+      }
+    },
+    {
+      "id": "O12",
+      "fact": "The spec explicitly says it is broader than the shipped runtime, which keeps aspirational sections from masquerading as current behavior.",
+      "evidence": [
+        {
+          "anchor": "spec/specification.md:7-7",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "README.md:297-297",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "current_state": 1,
+        "explainability": 1,
+        "contracts": 1
+      }
+    },
+    {
+      "id": "O13",
+      "fact": "Supervisor runtime behavior still depends on a goroutine, inbox channel, idle timer, and passivation timer.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/supervisor.go:82-112",
+          "kind": "code"
+        },
+        {
+          "anchor": "README.md:133-135",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "concurrency": -1,
+        "control_flow": -1,
+        "state": -1
+      }
+    },
+    {
+      "id": "O14",
+      "fact": "The ModelUpdate contract is still mirrored by hand between Go and TypeScript.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/event.go:52-63",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/web/src/model-state.ts:17-27",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "contracts": -1,
+        "dependencies": -1,
+        "radius": -1,
+        "current_state": -1
+      }
+    },
+    {
+      "id": "O15",
+      "fact": "deepCopy still falls back to shared references if JSON marshaling fails.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/supervisor.go:13-25",
+          "kind": "code"
+        },
+        {
+          "anchor": "go vet ./...",
+          "kind": "validation/runtime"
+        }
+      ],
+      "impacts": {
+        "validation": -1,
+        "contracts": -1,
+        "explainability": -1,
+        "side_effects": -1
+      }
+    },
+    {
+      "id": "O16",
+      "fact": "Replay silently skips malformed stored payloads by returning false from decodeReplayEvent without surfacing the record.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/service.go:291-303",
+          "kind": "code"
+        },
+        {
+          "anchor": "sdk/go/service_test.go:54-80",
+          "kind": "tests"
+        }
+      ],
+      "impacts": {
+        "validation": -1,
+        "explainability": -1,
+        "ordering": -1
+      }
+    }
+  ]
+}

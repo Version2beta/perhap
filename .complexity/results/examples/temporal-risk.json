@@ -1,0 +1,844 @@
+{
+  "packet": {
+    "title": "Example: temporal risk emphasis",
+    "scope": {
+      "kind": "targeted",
+      "roots": [
+        "sdk/go",
+        "demo/web/src",
+        "README.md",
+        "DEVELOPING.md"
+      ],
+      "notes": "Risk-heavy example emphasizing temporal and contract costs that still exist."
+    }
+  },
+  "coverage": {
+    "scopeFileCount": 17,
+    "observedFileCount": 10,
+    "observationCount": 10,
+    "facetCount": 27,
+    "missingEvidencePaths": []
+  },
+  "dimensions": {
+    "cognitive_load": {
+      "latent": -0.094,
+      "display": 65,
+      "confidence": 0.495,
+      "confidenceLabel": "low",
+      "topContributors": [
+        {
+          "facet": "concurrency",
+          "weight": 3,
+          "contribution": -3
+        },
+        {
+          "facet": "ordering",
+          "weight": 3,
+          "contribution": -2.25
+        },
+        {
+          "facet": "state",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "context_economy",
+          "weight": 2,
+          "contribution": 1
+        },
+        {
+          "facet": "locality",
+          "weight": 2,
+          "contribution": 1
+        }
+      ]
+    },
+    "context_load": {
+      "latent": 0.028,
+      "display": 73,
+      "confidence": 0.313,
+      "confidenceLabel": "low",
+      "topContributors": [
+        {
+          "facet": "radius",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "dependencies",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "locality",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "context_economy",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "architecture_docs",
+          "weight": 2,
+          "contribution": 1.5
+        }
+      ]
+    },
+    "confidence": {
+      "latent": -0.113,
+      "display": 64,
+      "confidence": 0.594,
+      "confidenceLabel": "medium",
+      "topContributors": [
+        {
+          "facet": "validation",
+          "weight": 3,
+          "contribution": -2.25
+        },
+        {
+          "facet": "tests",
+          "weight": 3,
+          "contribution": 2.25
+        },
+        {
+          "facet": "contracts",
+          "weight": 3,
+          "contribution": -2.001
+        },
+        {
+          "facet": "boundaries",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "explainability",
+          "weight": 3,
+          "contribution": -1.5
+        }
+      ]
+    },
+    "orientation": {
+      "latent": 0.489,
+      "display": 86,
+      "confidence": 0.293,
+      "confidenceLabel": "low",
+      "topContributors": [
+        {
+          "facet": "architecture_docs",
+          "weight": 3,
+          "contribution": 2.25
+        },
+        {
+          "facet": "naming",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "shape",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "state_vocabulary",
+          "weight": 3,
+          "contribution": 1.5
+        },
+        {
+          "facet": "orientation",
+          "weight": 3,
+          "contribution": 1.5
+        }
+      ]
+    },
+    "agentic_readiness": {
+      "latent": 0,
+      "display": 72,
+      "confidence": 0.485,
+      "confidenceLabel": "low",
+      "topContributors": [
+        {
+          "facet": "validation",
+          "weight": 3,
+          "contribution": -2.25
+        },
+        {
+          "facet": "tests",
+          "weight": 3,
+          "contribution": 2.25
+        },
+        {
+          "facet": "contracts",
+          "weight": 3,
+          "contribution": -2.001
+        },
+        {
+          "facet": "current_state",
+          "weight": 3,
+          "contribution": -1.5
+        },
+        {
+          "facet": "handoff",
+          "weight": 3,
+          "contribution": 1.5
+        }
+      ]
+    }
+  },
+  "families": {
+    "logic": {
+      "latent": -0.483,
+      "display": 37,
+      "confidence": 0.675,
+      "confidenceLabel": "medium",
+      "observedFacets": 5,
+      "totalFacets": 5
+    },
+    "context": {
+      "latent": 0,
+      "display": 72,
+      "confidence": 0.2,
+      "confidenceLabel": "insufficient",
+      "observedFacets": 4,
+      "totalFacets": 5
+    },
+    "meaning": {
+      "latent": 0.333,
+      "display": 81,
+      "confidence": 0.167,
+      "confidenceLabel": "insufficient",
+      "observedFacets": 4,
+      "totalFacets": 6
+    },
+    "correctness": {
+      "latent": -0.028,
+      "display": 70,
+      "confidence": 0.604,
+      "confidenceLabel": "medium",
+      "observedFacets": 6,
+      "totalFacets": 6
+    },
+    "continuity": {
+      "latent": 0.35,
+      "display": 82,
+      "confidence": 0.35,
+      "confidenceLabel": "low",
+      "observedFacets": 5,
+      "totalFacets": 5
+    }
+  },
+  "facets": {
+    "state": {
+      "family": "logic",
+      "raw": -2,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 4,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01",
+        "O02"
+      ]
+    },
+    "side_effects": {
+      "family": "logic",
+      "raw": 0,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 4,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O04",
+        "O08"
+      ]
+    },
+    "control_flow": {
+      "family": "logic",
+      "raw": -1,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": -0.167,
+      "display": 60,
+      "confidence": 0.875,
+      "confidenceLabel": "high",
+      "anchors": 6,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01",
+        "O02",
+        "O09"
+      ]
+    },
+    "ordering": {
+      "family": "logic",
+      "raw": -3,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": -0.75,
+      "display": 18,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 4,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O02",
+        "O03"
+      ]
+    },
+    "concurrency": {
+      "family": "logic",
+      "raw": -2,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -1,
+      "display": 0,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O01"
+      ]
+    },
+    "separation": {
+      "family": "context",
+      "raw": 0,
+      "relevantObservations": 0,
+      "maxAbs": 0,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0,
+      "confidenceLabel": "insufficient",
+      "anchors": 0,
+      "evidenceKinds": 0,
+      "observationIds": []
+    },
+    "radius": {
+      "family": "context",
+      "raw": -1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O05"
+      ]
+    },
+    "dependencies": {
+      "family": "context",
+      "raw": -1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O05"
+      ]
+    },
+    "locality": {
+      "family": "context",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O09"
+      ]
+    },
+    "context_economy": {
+      "family": "context",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O09"
+      ]
+    },
+    "naming": {
+      "family": "meaning",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O09"
+      ]
+    },
+    "language": {
+      "family": "meaning",
+      "raw": 0,
+      "relevantObservations": 0,
+      "maxAbs": 0,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0,
+      "confidenceLabel": "insufficient",
+      "anchors": 0,
+      "evidenceKinds": 0,
+      "observationIds": []
+    },
+    "shape": {
+      "family": "meaning",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O08"
+      ]
+    },
+    "state_vocabulary": {
+      "family": "meaning",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 3,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O10"
+      ]
+    },
+    "argument_patterns": {
+      "family": "meaning",
+      "raw": 0,
+      "relevantObservations": 0,
+      "maxAbs": 0,
+      "latent": 0,
+      "display": 72,
+      "confidence": 0,
+      "confidenceLabel": "insufficient",
+      "anchors": 0,
+      "evidenceKinds": 0,
+      "observationIds": []
+    },
+    "idiomaticity": {
+      "family": "meaning",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O08"
+      ]
+    },
+    "boundaries": {
+      "family": "correctness",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O07"
+      ]
+    },
+    "contracts": {
+      "family": "correctness",
+      "raw": -4,
+      "relevantObservations": 3,
+      "maxAbs": 6,
+      "latent": -0.667,
+      "display": 24,
+      "confidence": 0.875,
+      "confidenceLabel": "high",
+      "anchors": 6,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O03",
+        "O04",
+        "O05"
+      ]
+    },
+    "validation": {
+      "family": "correctness",
+      "raw": -3,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": -0.75,
+      "display": 18,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 4,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O03",
+        "O04"
+      ]
+    },
+    "tests": {
+      "family": "correctness",
+      "raw": 3,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.75,
+      "display": 93,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 4,
+      "evidenceKinds": 3,
+      "observationIds": [
+        "O07",
+        "O08"
+      ]
+    },
+    "demonstrations": {
+      "family": "correctness",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O07"
+      ]
+    },
+    "explainability": {
+      "family": "correctness",
+      "raw": -2,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 4,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O03",
+        "O04"
+      ]
+    },
+    "orientation": {
+      "family": "continuity",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O06"
+      ]
+    },
+    "decision_memory": {
+      "family": "continuity",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O06"
+      ]
+    },
+    "current_state": {
+      "family": "continuity",
+      "raw": -1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": -0.5,
+      "display": 36,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 2,
+      "evidenceKinds": 1,
+      "observationIds": [
+        "O05"
+      ]
+    },
+    "handoff": {
+      "family": "continuity",
+      "raw": 1,
+      "relevantObservations": 1,
+      "maxAbs": 2,
+      "latent": 0.5,
+      "display": 86,
+      "confidence": 0.25,
+      "confidenceLabel": "low",
+      "anchors": 3,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O10"
+      ]
+    },
+    "architecture_docs": {
+      "family": "continuity",
+      "raw": 3,
+      "relevantObservations": 2,
+      "maxAbs": 4,
+      "latent": 0.75,
+      "display": 93,
+      "confidence": 0.75,
+      "confidenceLabel": "high",
+      "anchors": 5,
+      "evidenceKinds": 2,
+      "observationIds": [
+        "O06",
+        "O10"
+      ]
+    }
+  },
+  "observations": [
+    {
+      "id": "O01",
+      "fact": "A supervisor owns a goroutine, inbox channel, idle timer, and passivation timer, so runtime state evolves over time rather than through plain function calls.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/supervisor.go:82-112",
+          "kind": "code"
+        },
+        {
+          "anchor": "README.md:133-135",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "concurrency": -2,
+        "control_flow": -1,
+        "state": -1
+      }
+    },
+    {
+      "id": "O02",
+      "fact": "Snapshot folding still requires reasoning about ordered window slices, snapshot UUID boundaries, and UUID bookkeeping.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/supervisor.go:129-141",
+          "kind": "code"
+        },
+        {
+          "anchor": "DEVELOPING.md:73-80",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "ordering": -2,
+        "state": -1,
+        "control_flow": -1
+      }
+    },
+    {
+      "id": "O03",
+      "fact": "Replay drops malformed stored payloads by returning false from decodeReplayEvent without surfacing the bad record.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/service.go:291-303",
+          "kind": "code"
+        },
+        {
+          "anchor": "sdk/go/service_test.go:54-80",
+          "kind": "tests"
+        }
+      ],
+      "impacts": {
+        "explainability": -1,
+        "contracts": -1,
+        "validation": -1,
+        "ordering": -1
+      }
+    },
+    {
+      "id": "O04",
+      "fact": "If deepCopy cannot marshal the model it returns shared references, which weakens the purity boundary the reducer depends on.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/supervisor.go:13-25",
+          "kind": "code"
+        },
+        {
+          "anchor": "sdk/go/supervisor.go:247-262",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "validation": -2,
+        "contracts": -1,
+        "explainability": -1,
+        "side_effects": -1
+      }
+    },
+    {
+      "id": "O05",
+      "fact": "ModelUpdate is mirrored by hand between Go and TypeScript, so a contract change still needs cross-language coordination.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/event.go:52-63",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/web/src/model-state.ts:17-27",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "contracts": -2,
+        "dependencies": -1,
+        "radius": -1,
+        "current_state": -1
+      }
+    },
+    {
+      "id": "O06",
+      "fact": "The docs explicitly lay out the supervisor lifecycle and pending model so the temporal rules are documented, not tribal.",
+      "evidence": [
+        {
+          "anchor": "README.md:133-135",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "DEVELOPING.md:69-132",
+          "kind": "docs/contracts"
+        }
+      ],
+      "impacts": {
+        "architecture_docs": 2,
+        "orientation": 1,
+        "decision_memory": 1
+      }
+    },
+    {
+      "id": "O07",
+      "fact": "Embedded-NATS integration tests exercise replay ordering and persisted _exception events.",
+      "evidence": [
+        {
+          "anchor": "sdk/go/service_integration_test.go:21-137",
+          "kind": "tests"
+        },
+        {
+          "anchor": "go test ./...",
+          "kind": "validation/runtime"
+        }
+      ],
+      "impacts": {
+        "tests": 2,
+        "demonstrations": 1,
+        "boundaries": 1
+      }
+    },
+    {
+      "id": "O08",
+      "fact": "The browser model-state helpers remain pure and individually tested.",
+      "evidence": [
+        {
+          "anchor": "demo/web/src/model-state.ts:47-109",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/web/src/model-state.test.ts:27-73",
+          "kind": "tests"
+        }
+      ],
+      "impacts": {
+        "side_effects": 1,
+        "shape": 1,
+        "tests": 1,
+        "idiomaticity": 1
+      }
+    },
+    {
+      "id": "O09",
+      "fact": "The browser watch path is still decomposed into named phases, which keeps the frontend orchestration from matching the Go-side temporal density.",
+      "evidence": [
+        {
+          "anchor": "demo/web/src/core.ts:59-79",
+          "kind": "code"
+        },
+        {
+          "anchor": "demo/web/src/core.ts:179-214",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "control_flow": 1,
+        "context_economy": 1,
+        "locality": 1,
+        "naming": 1
+      }
+    },
+    {
+      "id": "O10",
+      "fact": "Pending semantics are documented consistently across runtime docs and browser state helpers.",
+      "evidence": [
+        {
+          "anchor": "README.md:227-250",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "DEVELOPING.md:127-132",
+          "kind": "docs/contracts"
+        },
+        {
+          "anchor": "demo/web/src/model-state.ts:1-9",
+          "kind": "code"
+        }
+      ],
+      "impacts": {
+        "state_vocabulary": 1,
+        "architecture_docs": 1,
+        "handoff": 1
+      }
+    }
+  ]
+}

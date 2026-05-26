@@ -1,0 +1,151 @@
+{
+  "title": "Example: temporal risk emphasis",
+  "scope": {
+    "kind": "targeted",
+    "roots": [
+      "sdk/go",
+      "demo/web/src",
+      "README.md",
+      "DEVELOPING.md"
+    ],
+    "notes": "Risk-heavy example emphasizing temporal and contract costs that still exist."
+  },
+  "observations": [
+    {
+      "id": "O01",
+      "fact": "A supervisor owns a goroutine, inbox channel, idle timer, and passivation timer, so runtime state evolves over time rather than through plain function calls.",
+      "evidence": [
+        { "anchor": "sdk/go/supervisor.go:82-112", "kind": "code" },
+        { "anchor": "README.md:133-135", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "concurrency": -2,
+        "control_flow": -1,
+        "state": -1
+      }
+    },
+    {
+      "id": "O02",
+      "fact": "Snapshot folding still requires reasoning about ordered window slices, snapshot UUID boundaries, and UUID bookkeeping.",
+      "evidence": [
+        { "anchor": "sdk/go/supervisor.go:129-141", "kind": "code" },
+        { "anchor": "DEVELOPING.md:73-80", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "ordering": -2,
+        "state": -1,
+        "control_flow": -1
+      }
+    },
+    {
+      "id": "O03",
+      "fact": "Replay drops malformed stored payloads by returning false from decodeReplayEvent without surfacing the bad record.",
+      "evidence": [
+        { "anchor": "sdk/go/service.go:291-303", "kind": "code" },
+        { "anchor": "sdk/go/service_test.go:54-80", "kind": "tests" }
+      ],
+      "impacts": {
+        "explainability": -1,
+        "contracts": -1,
+        "validation": -1,
+        "ordering": -1
+      }
+    },
+    {
+      "id": "O04",
+      "fact": "If deepCopy cannot marshal the model it returns shared references, which weakens the purity boundary the reducer depends on.",
+      "evidence": [
+        { "anchor": "sdk/go/supervisor.go:13-25", "kind": "code" },
+        { "anchor": "sdk/go/supervisor.go:247-262", "kind": "code" }
+      ],
+      "impacts": {
+        "validation": -2,
+        "contracts": -1,
+        "explainability": -1,
+        "side_effects": -1
+      }
+    },
+    {
+      "id": "O05",
+      "fact": "ModelUpdate is mirrored by hand between Go and TypeScript, so a contract change still needs cross-language coordination.",
+      "evidence": [
+        { "anchor": "sdk/go/event.go:52-63", "kind": "code" },
+        { "anchor": "demo/web/src/model-state.ts:17-27", "kind": "code" }
+      ],
+      "impacts": {
+        "contracts": -2,
+        "dependencies": -1,
+        "radius": -1,
+        "current_state": -1
+      }
+    },
+    {
+      "id": "O06",
+      "fact": "The docs explicitly lay out the supervisor lifecycle and pending model so the temporal rules are documented, not tribal.",
+      "evidence": [
+        { "anchor": "README.md:133-135", "kind": "docs/contracts" },
+        { "anchor": "DEVELOPING.md:69-132", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "architecture_docs": 2,
+        "orientation": 1,
+        "decision_memory": 1
+      }
+    },
+    {
+      "id": "O07",
+      "fact": "Embedded-NATS integration tests exercise replay ordering and persisted _exception events.",
+      "evidence": [
+        { "anchor": "sdk/go/service_integration_test.go:21-137", "kind": "tests" },
+        { "anchor": "go test ./...", "kind": "validation/runtime" }
+      ],
+      "impacts": {
+        "tests": 2,
+        "demonstrations": 1,
+        "boundaries": 1
+      }
+    },
+    {
+      "id": "O08",
+      "fact": "The browser model-state helpers remain pure and individually tested.",
+      "evidence": [
+        { "anchor": "demo/web/src/model-state.ts:47-109", "kind": "code" },
+        { "anchor": "demo/web/src/model-state.test.ts:27-73", "kind": "tests" }
+      ],
+      "impacts": {
+        "side_effects": 1,
+        "shape": 1,
+        "tests": 1,
+        "idiomaticity": 1
+      }
+    },
+    {
+      "id": "O09",
+      "fact": "The browser watch path is still decomposed into named phases, which keeps the frontend orchestration from matching the Go-side temporal density.",
+      "evidence": [
+        { "anchor": "demo/web/src/core.ts:59-79", "kind": "code" },
+        { "anchor": "demo/web/src/core.ts:179-214", "kind": "code" }
+      ],
+      "impacts": {
+        "control_flow": 1,
+        "context_economy": 1,
+        "locality": 1,
+        "naming": 1
+      }
+    },
+    {
+      "id": "O10",
+      "fact": "Pending semantics are documented consistently across runtime docs and browser state helpers.",
+      "evidence": [
+        { "anchor": "README.md:227-250", "kind": "docs/contracts" },
+        { "anchor": "DEVELOPING.md:127-132", "kind": "docs/contracts" },
+        { "anchor": "demo/web/src/model-state.ts:1-9", "kind": "code" }
+      ],
+      "impacts": {
+        "state_vocabulary": 1,
+        "architecture_docs": 1,
+        "handoff": 1
+      }
+    }
+  ]
+}

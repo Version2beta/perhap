@@ -1,0 +1,164 @@
+{
+  "title": "Example: strong structural signals",
+  "scope": {
+    "kind": "whole_repo",
+    "roots": [
+      "sdk/go",
+      "demo/web/src",
+      "demo/cart",
+      "README.md",
+      "DEVELOPING.md",
+      "spec/specification.md"
+    ],
+    "notes": "Positive example emphasizing structure, documentation, and validation."
+  },
+  "observations": [
+    {
+      "id": "O01",
+      "fact": "README and DEVELOPING map the major Go and TypeScript files to responsibilities, which makes the repo shape explicit.",
+      "evidence": [
+        { "anchor": "README.md:253-260", "kind": "docs/contracts" },
+        { "anchor": "DEVELOPING.md:61-67", "kind": "docs/contracts" },
+        { "anchor": "DEVELOPING.md:103-111", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "architecture_docs": 2,
+        "orientation": 1,
+        "handoff": 1,
+        "locality": 1
+      }
+    },
+    {
+      "id": "O02",
+      "fact": "The Domain builder is well-commented, exposes a narrow API, and explains the generic-method tradeoff directly in code.",
+      "evidence": [
+        { "anchor": "sdk/go/domain.go:11-30", "kind": "code" },
+        { "anchor": "sdk/go/domain.go:61-89", "kind": "code" },
+        { "anchor": "sdk/go/domain_test.go:19-133", "kind": "tests" }
+      ],
+      "impacts": {
+        "naming": 1,
+        "idiomaticity": 2,
+        "contracts": 1,
+        "tests": 1,
+        "explainability": 1
+      }
+    },
+    {
+      "id": "O03",
+      "fact": "Browser model-state transitions are pure helpers with direct unit coverage for optimistic confirmation and buffer ordering.",
+      "evidence": [
+        { "anchor": "demo/web/src/model-state.ts:47-109", "kind": "code" },
+        { "anchor": "demo/web/src/model-state.test.ts:27-73", "kind": "tests" }
+      ],
+      "impacts": {
+        "side_effects": 2,
+        "shape": 1,
+        "tests": 2,
+        "validation": 1
+      }
+    },
+    {
+      "id": "O04",
+      "fact": "The browser runtime is decomposed into small helpers for watch setup, hydration, buffered replay, and optimistic updates.",
+      "evidence": [
+        { "anchor": "demo/web/src/core.ts:59-79", "kind": "code" },
+        { "anchor": "demo/web/src/core.ts:159-235", "kind": "code" }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "separation": 1,
+        "locality": 1,
+        "context_economy": 1
+      }
+    },
+    {
+      "id": "O05",
+      "fact": "Service replay now exposes lookup, replay response construction, message decode, sorting, and reduction as distinct named helpers.",
+      "evidence": [
+        { "anchor": "sdk/go/service.go:208-339", "kind": "code" },
+        { "anchor": "sdk/go/service_test.go:10-81", "kind": "tests" }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "ordering": 1,
+        "explainability": 1,
+        "separation": 1
+      }
+    },
+    {
+      "id": "O06",
+      "fact": "Supervisor event processing advertises its phases directly and keeps exception payload structure named in-package.",
+      "evidence": [
+        { "anchor": "sdk/go/supervisor.go:47-51", "kind": "code" },
+        { "anchor": "sdk/go/supervisor.go:115-127", "kind": "code" },
+        { "anchor": "sdk/go/supervisor_test.go:53-76", "kind": "tests" }
+      ],
+      "impacts": {
+        "control_flow": 2,
+        "state": 1,
+        "naming": 1,
+        "state_vocabulary": 1,
+        "tests": 1
+      }
+    },
+    {
+      "id": "O07",
+      "fact": "The test suite spans unit behavior, integration replay, build, typecheck, and browser runtime checks.",
+      "evidence": [
+        { "anchor": "sdk/go/service_integration_test.go:21-137", "kind": "tests" },
+        { "anchor": "demo/web/src/model-state.test.ts:27-73", "kind": "tests" },
+        { "anchor": "go test ./...", "kind": "validation/runtime" },
+        { "anchor": "npx tsc --noEmit", "kind": "validation/runtime" }
+      ],
+      "impacts": {
+        "tests": 2,
+        "demonstrations": 1,
+        "boundaries": 1,
+        "validation": 1
+      }
+    },
+    {
+      "id": "O08",
+      "fact": "Docs describe supervisor lifecycle, hydration ordering, and pending semantics in the same vocabulary the code uses.",
+      "evidence": [
+        { "anchor": "README.md:133-146", "kind": "docs/contracts" },
+        { "anchor": "README.md:227-260", "kind": "docs/contracts" },
+        { "anchor": "DEVELOPING.md:69-132", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "architecture_docs": 2,
+        "decision_memory": 1,
+        "current_state": 1,
+        "state_vocabulary": 1
+      }
+    },
+    {
+      "id": "O09",
+      "fact": "The spec explicitly says it is broader than the shipped runtime, which prevents aspirational sections from masquerading as current behavior.",
+      "evidence": [
+        { "anchor": "spec/specification.md:7-7", "kind": "docs/contracts" },
+        { "anchor": "README.md:297-297", "kind": "docs/contracts" }
+      ],
+      "impacts": {
+        "contracts": 1,
+        "current_state": 1,
+        "explainability": 1
+      }
+    },
+    {
+      "id": "O10",
+      "fact": "The codebase still carries a hand-maintained cross-language model contract and a JSON deep-copy fallback.",
+      "evidence": [
+        { "anchor": "sdk/go/event.go:52-63", "kind": "code" },
+        { "anchor": "demo/web/src/model-state.ts:17-27", "kind": "code" },
+        { "anchor": "sdk/go/supervisor.go:13-25", "kind": "code" }
+      ],
+      "impacts": {
+        "contracts": -1,
+        "dependencies": -1,
+        "validation": -1
+      }
+    }
+  ]
+}

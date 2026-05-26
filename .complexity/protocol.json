@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "families": {
+    "logic": [
+      "state",
+      "side_effects",
+      "control_flow",
+      "ordering",
+      "concurrency"
+    ],
+    "context": [
+      "separation",
+      "radius",
+      "dependencies",
+      "locality",
+      "context_economy"
+    ],
+    "meaning": [
+      "naming",
+      "language",
+      "shape",
+      "state_vocabulary",
+      "argument_patterns",
+      "idiomaticity"
+    ],
+    "correctness": [
+      "boundaries",
+      "contracts",
+      "validation",
+      "tests",
+      "demonstrations",
+      "explainability"
+    ],
+    "continuity": [
+      "orientation",
+      "decision_memory",
+      "current_state",
+      "handoff",
+      "architecture_docs"
+    ]
+  },
+  "evidenceKinds": [
+    "code",
+    "tests",
+    "docs/contracts",
+    "validation/runtime"
+  ],
+  "impactScale": {
+    "min": -2,
+    "max": 2
+  },
+  "confidenceTargets": {
+    "whole_repo": {
+      "observations": 5,
+      "anchors": 3,
+      "kinds": 2
+    },
+    "targeted": {
+      "observations": 4,
+      "anchors": 2,
+      "kinds": 2
+    }
+  },
+  "confidenceWeights": {
+    "observations": 0.5,
+    "anchors": 0.3,
+    "kinds": 0.2
+  },
+  "confidenceCaps": [
+    {
+      "metric": "observations",
+      "threshold": 2,
+      "cap": 0.25
+    },
+    {
+      "metric": "anchors",
+      "threshold": 2,
+      "cap": 0.5
+    },
+    {
+      "metric": "kinds",
+      "threshold": 2,
+      "cap": 0.75
+    }
+  ],
+  "displayMapping": {
+    "neutral": 72
+  },
+  "dimensionWeights": {
+    "cognitive_load": {
+      "state": 3,
+      "control_flow": 3,
+      "ordering": 3,
+      "concurrency": 3,
+      "context_economy": 2,
+      "locality": 2,
+      "shape": 2,
+      "state_vocabulary": 2,
+      "side_effects": 2,
+      "naming": 1,
+      "idiomaticity": 1
+    },
+    "context_load": {
+      "separation": 3,
+      "radius": 3,
+      "dependencies": 3,
+      "locality": 3,
+      "context_economy": 3,
+      "contracts": 2,
+      "current_state": 2,
+      "architecture_docs": 2,
+      "decision_memory": 2,
+      "shape": 1
+    },
+    "confidence": {
+      "boundaries": 3,
+      "contracts": 3,
+      "validation": 3,
+      "tests": 3,
+      "explainability": 3,
+      "demonstrations": 2,
+      "ordering": 1,
+      "concurrency": 1,
+      "idiomaticity": 1
+    },
+    "orientation": {
+      "naming": 3,
+      "shape": 3,
+      "state_vocabulary": 3,
+      "orientation": 3,
+      "architecture_docs": 3,
+      "decision_memory": 2,
+      "handoff": 2,
+      "locality": 2,
+      "separation": 1,
+      "language": 1
+    },
+    "agentic_readiness": {
+      "contracts": 3,
+      "validation": 3,
+      "tests": 3,
+      "current_state": 3,
+      "handoff": 3,
+      "boundaries": 2,
+      "context_economy": 2,
+      "explainability": 2,
+      "idiomaticity": 2,
+      "dependencies": 1,
+      "decision_memory": 1
+    }
+  }
+}
