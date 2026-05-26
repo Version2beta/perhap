@@ -1,6 +1,8 @@
 {
   "packet": {
     "title": "Example: strong structural signals",
+    "evidenceMode": "fresh",
+    "reuse": null,
     "scope": {
       "kind": "whole_repo",
       "roots": [
@@ -12,6 +14,51 @@
         "spec/specification.md"
       ],
       "notes": "Positive example emphasizing structure, documentation, and validation."
+    }
+  },
+  "runManifest": {
+    "protocolVersion": 1,
+    "headCommit": "c86c6f1f1c2d96ebe0a9e7186022d798ba6d1053",
+    "globalStatusShort": " M .complexity/baselines/perhap-whole-repo-v1.json\n M .complexity/examples/insufficient-coverage.json\n M .complexity/examples/strong-structure.json\n M .complexity/examples/temporal-risk.json\n M .complexity/packet.schema.json\n M .complexity/results/baselines/perhap-whole-repo-v1.json\n M .complexity/results/baselines/perhap-whole-repo-v1.md\n M .complexity/results/examples/insufficient-coverage.json\n M .complexity/results/examples/insufficient-coverage.md\n M .complexity/results/examples/strong-structure.json\n M .complexity/results/examples/strong-structure.md\n M .complexity/results/examples/temporal-risk.json\n M .complexity/results/examples/temporal-risk.md\n M SCORING.md\n M scripts/complexity-score.mjs\n M scripts/complexity-score.test.mjs\n?? .complexity/RUN_RULES.md\nM .complexity/CALIBRATION.md",
+    "scopeStatusShort": "",
+    "scopeFileListHash": "49e08e38de7e412643c1ea095f330d202b982cbe0d50952110f105bcc8f505fb",
+    "scopeContentHash": "36c8b41d03b4542e08ba90c3c770b033dc73849e9b797736749bea976bee45cf",
+    "treeFingerprint": "3d0f77b9330ca7d8021cf28996b049c8c8eac7ae7de5259c87209e6303ccc819",
+    "readLedger": {
+      "codeAnchors": [
+        "demo/web/src/core.ts:159-235",
+        "demo/web/src/core.ts:59-79",
+        "demo/web/src/model-state.ts:17-27",
+        "demo/web/src/model-state.ts:47-109",
+        "sdk/go/domain.go:11-30",
+        "sdk/go/domain.go:61-89",
+        "sdk/go/event.go:52-63",
+        "sdk/go/service.go:208-339",
+        "sdk/go/supervisor.go:115-127",
+        "sdk/go/supervisor.go:13-25",
+        "sdk/go/supervisor.go:47-51"
+      ],
+      "testAnchors": [
+        "demo/web/src/model-state.test.ts:27-73",
+        "sdk/go/domain_test.go:19-133",
+        "sdk/go/service_integration_test.go:21-137",
+        "sdk/go/service_test.go:10-81",
+        "sdk/go/supervisor_test.go:53-76"
+      ],
+      "docsAnchors": [
+        "DEVELOPING.md:103-111",
+        "DEVELOPING.md:61-67",
+        "DEVELOPING.md:69-132",
+        "README.md:133-146",
+        "README.md:227-260",
+        "README.md:253-260",
+        "README.md:297-297",
+        "spec/specification.md:7-7"
+      ],
+      "validationCommands": [
+        "go test ./...",
+        "npx tsc --noEmit"
+      ]
     }
   },
   "coverage": {

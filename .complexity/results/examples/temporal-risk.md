@@ -1,10 +1,20 @@
 # Example: temporal risk emphasis
 
+- Evidence mode: `fresh`
 - Scope kind: `targeted`
 - Scope roots: `sdk/go`, `demo/web/src`, `README.md`, `DEVELOPING.md`
+- HEAD commit: `c86c6f1f1c2d`
+- Tree fingerprint: `38d8f6c24f9c57cf`
 - Scope files via `rg --files`: 17
 - Observation count: 10
 - Files touched by evidence: 10
+
+## Read Ledger
+
+- Code anchors: 11
+- Test anchors: 3
+- Docs anchors: 5
+- Validation commands: 1
 
 ## Dimensions
 

@@ -1,5 +1,6 @@
 {
   "title": "Perhap baseline whole repo v1",
+  "evidenceMode": "fresh",
   "scope": {
     "kind": "whole_repo",
     "roots": [

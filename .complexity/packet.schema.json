@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "title",
+    "evidenceMode",
     "scope",
     "observations"
   ],
@@ -12,6 +13,30 @@
     "title": {
       "type": "string",
       "minLength": 1
+    },
+    "evidenceMode": {
+      "enum": [
+        "fresh",
+        "diff_from_baseline",
+        "reused_exact_tree"
+      ]
+    },
+    "reuse": {
+      "type": "object",
+      "properties": {
+        "baselinePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedFingerprint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "scope": {
       "type": "object",

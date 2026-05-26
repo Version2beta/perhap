@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +8,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..')
 const protocolPath = path.join(repoRoot, '.complexity', 'protocol.json')
+const evidenceModes = new Set(['fresh', 'diff_from_baseline', 'reused_exact_tree'])
 
 export function loadProtocol(customPath = protocolPath) {
   return JSON.parse(readFileSync(customPath, 'utf8'))
@@ -138,6 +140,7 @@ function usage() {
     'Usage: node scripts/complexity-score.mjs --input <packet.json> [--format markdown|json]',
     '',
     'Scores an observation packet against the repo-local complexity protocol.',
+    'Packets must declare an evidence mode: fresh, diff_from_baseline, or reused_exact_tree.',
   ].join('\n')
 }
 
@@ -156,12 +159,116 @@ function listScopeFiles(roots) {
     .filter(Boolean)
 }
 
+function runGit(args) {
+  const result = spawnSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || `git ${args.join(' ')} failed`)
+  }
+  return result.stdout.trim()
+}
+
+function normalizeMultiline(value) {
+  if (!value) {
+    return ''
+  }
+  return value
+    .split('\n')
+    .map(line => line.trimEnd())
+    .filter(Boolean)
+    .sort()
+    .join('\n')
+}
+
+function hashStrings(values) {
+  const hash = createHash('sha256')
+  for (const value of values) {
+    hash.update(value)
+    hash.update('\n')
+  }
+  return hash.digest('hex')
+}
+
+function hashScopeContents(scopeFiles) {
+  const hash = createHash('sha256')
+  for (const relativePath of scopeFiles) {
+    hash.update(relativePath)
+    hash.update('\0')
+    hash.update(readFileSync(path.join(repoRoot, relativePath)))
+    hash.update('\0')
+  }
+  return hash.digest('hex')
+}
+
+export function computeTreeFingerprint(roots, protocolVersion = null) {
+  const scopeFiles = listScopeFiles(roots)
+  const headCommit = runGit(['rev-parse', 'HEAD'])
+  const globalStatusShort = normalizeMultiline(runGit(['status', '--short']))
+  const scopeStatusShort = normalizeMultiline(runGit(['status', '--short', '--', ...roots]))
+  const scopeFileListHash = hashStrings(scopeFiles)
+  const scopeContentHash = hashScopeContents(scopeFiles)
+  const fingerprintInputs = [
+    headCommit,
+    globalStatusShort,
+    scopeStatusShort,
+    scopeFileListHash,
+    scopeContentHash,
+  ]
+
+  if (protocolVersion !== null) {
+    fingerprintInputs.push(String(protocolVersion))
+  }
+
+  return {
+    headCommit,
+    globalStatusShort,
+    scopeStatusShort,
+    scopeFileCount: scopeFiles.length,
+    scopeFileListHash,
+    scopeContentHash,
+    treeFingerprint: hashStrings(fingerprintInputs),
+    scopeFiles,
+  }
+}
+
 function anchorPath(anchor) {
   const colonIndex = anchor.indexOf(':')
   if (colonIndex === -1) {
     return anchor
   }
   return anchor.slice(0, colonIndex)
+}
+
+function buildReadLedger(observations) {
+  const ledger = {
+    codeAnchors: new Set(),
+    testAnchors: new Set(),
+    docsAnchors: new Set(),
+    validationCommands: new Set(),
+  }
+
+  for (const observation of observations) {
+    for (const evidence of observation.evidence) {
+      if (evidence.kind === 'code') {
+        ledger.codeAnchors.add(evidence.anchor)
+      } else if (evidence.kind === 'tests') {
+        ledger.testAnchors.add(evidence.anchor)
+      } else if (evidence.kind === 'docs/contracts') {
+        ledger.docsAnchors.add(evidence.anchor)
+      } else if (evidence.kind === 'validation/runtime') {
+        ledger.validationCommands.add(evidence.anchor)
+      }
+    }
+  }
+
+  return {
+    codeAnchors: Array.from(ledger.codeAnchors).sort(),
+    testAnchors: Array.from(ledger.testAnchors).sort(),
+    docsAnchors: Array.from(ledger.docsAnchors).sort(),
+    validationCommands: Array.from(ledger.validationCommands).sort(),
+  }
 }
 
 function findFamilyByFacet(protocol, facet) {
@@ -181,6 +288,9 @@ function validatePacket(packet, protocol) {
   if (!packet.title || typeof packet.title !== 'string') {
     throw new Error('packet.title is required')
   }
+  if (!evidenceModes.has(packet.evidenceMode)) {
+    throw new Error(`packet.evidenceMode must be one of: ${Array.from(evidenceModes).join(', ')}`)
+  }
   if (!packet.scope || typeof packet.scope !== 'object') {
     throw new Error('packet.scope is required')
   }
@@ -192,6 +302,12 @@ function validatePacket(packet, protocol) {
   }
   if (!Array.isArray(packet.observations) || packet.observations.length === 0) {
     throw new Error('packet.observations must be a non-empty array')
+  }
+  if (packet.evidenceMode === 'diff_from_baseline' && !packet.reuse?.baselinePath) {
+    throw new Error('diff_from_baseline packets must provide reuse.baselinePath')
+  }
+  if (packet.evidenceMode === 'reused_exact_tree' && !packet.reuse?.expectedFingerprint) {
+    throw new Error('reused_exact_tree packets must provide reuse.expectedFingerprint')
   }
 
   for (const observation of packet.observations) {
@@ -223,11 +339,28 @@ function validatePacket(packet, protocol) {
   }
 }
 
+function enforceEvidenceMode(packet, runManifest) {
+  if (packet.evidenceMode !== 'reused_exact_tree') {
+    return
+  }
+  if (packet.reuse.expectedFingerprint !== runManifest.treeFingerprint) {
+    throw new Error(
+      [
+        'reused_exact_tree packet fingerprint mismatch:',
+        `expected ${packet.reuse.expectedFingerprint}`,
+        `current  ${runManifest.treeFingerprint}`,
+      ].join('\n')
+    )
+  }
+}
+
 export function scorePacket(packet, protocol = loadProtocol()) {
   validatePacket(packet, protocol)
 
-  const scopeFiles = listScopeFiles(packet.scope.roots)
-  const scopeFileSet = new Set(scopeFiles)
+  const runManifest = computeTreeFingerprint(packet.scope.roots, protocol.version ?? null)
+  enforceEvidenceMode(packet, runManifest)
+
+  const scopeFileSet = new Set(runManifest.scopeFiles)
   const allFacets = flattenFacets(protocol)
   const facetResults = {}
   const missingEvidencePaths = new Set()
@@ -312,10 +445,22 @@ export function scorePacket(packet, protocol = loadProtocol()) {
   return {
     packet: {
       title: packet.title,
+      evidenceMode: packet.evidenceMode,
+      reuse: packet.reuse ?? null,
       scope: packet.scope,
     },
+    runManifest: {
+      protocolVersion: protocol.version ?? null,
+      headCommit: runManifest.headCommit,
+      globalStatusShort: runManifest.globalStatusShort,
+      scopeStatusShort: runManifest.scopeStatusShort,
+      scopeFileListHash: runManifest.scopeFileListHash,
+      scopeContentHash: runManifest.scopeContentHash,
+      treeFingerprint: runManifest.treeFingerprint,
+      readLedger: buildReadLedger(packet.observations),
+    },
     coverage: {
-      scopeFileCount: scopeFiles.length,
+      scopeFileCount: runManifest.scopeFiles.length,
       observedFileCount: observedFiles.size,
       observationCount: packet.observations.length,
       facetCount: allFacets.length,
@@ -332,12 +477,20 @@ export function renderMarkdown(result) {
   const lines = []
   lines.push(`# ${result.packet.title}`)
   lines.push('')
+  lines.push(`- Evidence mode: \`${result.packet.evidenceMode}\``)
   lines.push(`- Scope kind: \`${result.packet.scope.kind}\``)
   lines.push(`- Scope roots: ${result.packet.scope.roots.map(root => `\`${root}\``).join(', ')}`)
+  lines.push(`- HEAD commit: \`${result.runManifest.headCommit.slice(0, 12)}\``)
+  lines.push(`- Tree fingerprint: \`${result.runManifest.treeFingerprint.slice(0, 16)}\``)
   lines.push(`- Scope files via \`rg --files\`: ${result.coverage.scopeFileCount}`)
   lines.push(`- Observation count: ${result.coverage.observationCount}`)
   lines.push(`- Files touched by evidence: ${result.coverage.observedFileCount}`)
   lines.push('')
+
+  if (result.packet.reuse?.baselinePath) {
+    lines.push(`- Baseline reference: \`${result.packet.reuse.baselinePath}\``)
+    lines.push('')
+  }
 
   if (result.coverage.missingEvidencePaths.length > 0) {
     lines.push('## Scope Warnings')
@@ -347,6 +500,23 @@ export function renderMarkdown(result) {
     }
     lines.push('')
   }
+
+  if (result.runManifest.scopeStatusShort) {
+    lines.push('## Worktree')
+    lines.push('')
+    lines.push('```text')
+    lines.push(result.runManifest.scopeStatusShort)
+    lines.push('```')
+    lines.push('')
+  }
+
+  lines.push('## Read Ledger')
+  lines.push('')
+  lines.push(`- Code anchors: ${result.runManifest.readLedger.codeAnchors.length}`)
+  lines.push(`- Test anchors: ${result.runManifest.readLedger.testAnchors.length}`)
+  lines.push(`- Docs anchors: ${result.runManifest.readLedger.docsAnchors.length}`)
+  lines.push(`- Validation commands: ${result.runManifest.readLedger.validationCommands.length}`)
+  lines.push('')
 
   lines.push('## Dimensions')
   lines.push('')

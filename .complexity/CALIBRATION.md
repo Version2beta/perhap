@@ -2,6 +2,8 @@
 
 This directory contains the repo-local calibration material for the complexity scorer.
 
+Freshness and evidence reuse rules are in [RUN_RULES.md](/Users/rob/Development/perhap/.complexity/RUN_RULES.md:1).
+
 ## Canonical baseline
 
 - [baselines/perhap-whole-repo-v1.json](/Users/rob/Development/perhap/.complexity/baselines/perhap-whole-repo-v1.json:1)

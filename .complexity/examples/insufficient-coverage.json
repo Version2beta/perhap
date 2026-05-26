@@ -1,5 +1,6 @@
 {
   "title": "Example: insufficient coverage",
+  "evidenceMode": "fresh",
   "scope": {
     "kind": "whole_repo",
     "roots": [

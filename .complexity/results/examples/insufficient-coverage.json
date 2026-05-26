@@ -1,6 +1,8 @@
 {
   "packet": {
     "title": "Example: insufficient coverage",
+    "evidenceMode": "fresh",
+    "reuse": null,
     "scope": {
       "kind": "whole_repo",
       "roots": [
@@ -12,6 +14,26 @@
         "spec/specification.md"
       ],
       "notes": "Deliberately thin packet showing how low evidence density suppresses confidence."
+    }
+  },
+  "runManifest": {
+    "protocolVersion": 1,
+    "headCommit": "c86c6f1f1c2d96ebe0a9e7186022d798ba6d1053",
+    "globalStatusShort": " M .complexity/baselines/perhap-whole-repo-v1.json\n M .complexity/examples/insufficient-coverage.json\n M .complexity/examples/strong-structure.json\n M .complexity/examples/temporal-risk.json\n M .complexity/packet.schema.json\n M .complexity/results/baselines/perhap-whole-repo-v1.json\n M .complexity/results/baselines/perhap-whole-repo-v1.md\n M .complexity/results/examples/insufficient-coverage.json\n M .complexity/results/examples/insufficient-coverage.md\n M .complexity/results/examples/strong-structure.json\n M .complexity/results/examples/strong-structure.md\n M .complexity/results/examples/temporal-risk.json\n M .complexity/results/examples/temporal-risk.md\n M SCORING.md\n M scripts/complexity-score.mjs\n M scripts/complexity-score.test.mjs\n?? .complexity/RUN_RULES.md\nM .complexity/CALIBRATION.md",
+    "scopeStatusShort": "",
+    "scopeFileListHash": "6e6b32585e07c3cf605d0fdfa0db8d329f48fa9f586d30092d2ef8c2d23e397e",
+    "scopeContentHash": "e051c64d41393d2e5aaf138f1149a976c0fb482d9466903f1ef5357c5158cb82",
+    "treeFingerprint": "c21b100412a012927123382bb41b6299d79b33addb124f69445d1572c4456edd",
+    "readLedger": {
+      "codeAnchors": [
+        "demo/web/src/core.ts:59-79",
+        "sdk/go/supervisor.go:82-112"
+      ],
+      "testAnchors": [],
+      "docsAnchors": [
+        "README.md:133-146"
+      ],
+      "validationCommands": []
     }
   },
   "coverage": {

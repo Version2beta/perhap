@@ -1,5 +1,6 @@
 {
   "title": "Example: strong structural signals",
+  "evidenceMode": "fresh",
   "scope": {
     "kind": "whole_repo",
     "roots": [

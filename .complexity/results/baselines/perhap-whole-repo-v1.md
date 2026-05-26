@@ -1,10 +1,20 @@
 # Perhap baseline whole repo v1
 
+- Evidence mode: `fresh`
 - Scope kind: `whole_repo`
 - Scope roots: `sdk/go`, `demo/web/src`, `demo/cart`, `README.md`, `DEVELOPING.md`, `spec/specification.md`
+- HEAD commit: `c86c6f1f1c2d`
+- Tree fingerprint: `c21b100412a01292`
 - Scope files via `rg --files`: 20
 - Observation count: 16
 - Files touched by evidence: 15
+
+## Read Ledger
+
+- Code anchors: 17
+- Test anchors: 5
+- Docs anchors: 13
+- Validation commands: 3
 
 ## Dimensions
 

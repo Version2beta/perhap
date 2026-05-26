@@ -19,6 +19,7 @@ Scope files are whatever `rg --files` returns for the chosen roots. That means:
 Packets live as JSON and follow [.complexity/packet.schema.json](/Users/rob/Development/perhap/.complexity/packet.schema.json:1).
 
 The repo-local calibration set lives in [.complexity/CALIBRATION.md](/Users/rob/Development/perhap/.complexity/CALIBRATION.md:1), including the canonical baseline packet and a few scored reference examples.
+Run freshness and reuse policy live in [.complexity/RUN_RULES.md](/Users/rob/Development/perhap/.complexity/RUN_RULES.md:1).
 
 Each observation contains:
 
@@ -28,6 +29,19 @@ Each observation contains:
 - `impacts`
 
 `impacts` is keyed by fixed facet name. Each impact is an integer in `[-2, 2]`.
+
+Each packet also declares:
+
+- `evidenceMode`
+- optional `reuse`
+
+Supported evidence modes:
+
+- `fresh`
+- `diff_from_baseline`
+- `reused_exact_tree`
+
+Exact-tree reuse is validated against the current scope fingerprint.
 
 Meaning of impact values:
 
@@ -125,7 +139,7 @@ Useful flags:
 - `--format markdown` (default)
 - `--format json`
 
-The scorer validates packet structure, enumerates the `rg` scope files, checks evidence anchors against that scope, and prints dimensions, families, facets, and confidence levels.
+The scorer validates packet structure, enumerates the `rg` scope files, checks evidence anchors against that scope, computes a scope fingerprint, enforces evidence-mode reuse rules, and prints dimensions, families, facets, confidence, and a run manifest.
 
 To refresh the frozen baseline and example outputs:
 

@@ -1,6 +1,8 @@
 {
   "packet": {
     "title": "Example: temporal risk emphasis",
+    "evidenceMode": "fresh",
+    "reuse": null,
     "scope": {
       "kind": "targeted",
       "roots": [
@@ -10,6 +12,45 @@
         "DEVELOPING.md"
       ],
       "notes": "Risk-heavy example emphasizing temporal and contract costs that still exist."
+    }
+  },
+  "runManifest": {
+    "protocolVersion": 1,
+    "headCommit": "c86c6f1f1c2d96ebe0a9e7186022d798ba6d1053",
+    "globalStatusShort": " M .complexity/baselines/perhap-whole-repo-v1.json\n M .complexity/examples/insufficient-coverage.json\n M .complexity/examples/strong-structure.json\n M .complexity/examples/temporal-risk.json\n M .complexity/packet.schema.json\n M .complexity/results/baselines/perhap-whole-repo-v1.json\n M .complexity/results/baselines/perhap-whole-repo-v1.md\n M .complexity/results/examples/insufficient-coverage.json\n M .complexity/results/examples/insufficient-coverage.md\n M .complexity/results/examples/strong-structure.json\n M .complexity/results/examples/strong-structure.md\n M .complexity/results/examples/temporal-risk.json\n M .complexity/results/examples/temporal-risk.md\n M SCORING.md\n M scripts/complexity-score.mjs\n M scripts/complexity-score.test.mjs\n?? .complexity/RUN_RULES.md\nM .complexity/CALIBRATION.md",
+    "scopeStatusShort": "",
+    "scopeFileListHash": "14ca13e9a06c955d4c5bdc6b8da744a5b59435034658216ba42de4dcb0ce4ca0",
+    "scopeContentHash": "15120530764ec50c9ab13d7a444c3ba3e89a89ededae54fe26122d21ef742eaa",
+    "treeFingerprint": "38d8f6c24f9c57cfaf48175fc2f67559dfe36c09b44413bb7c4205e592a3f759",
+    "readLedger": {
+      "codeAnchors": [
+        "demo/web/src/core.ts:179-214",
+        "demo/web/src/core.ts:59-79",
+        "demo/web/src/model-state.ts:1-9",
+        "demo/web/src/model-state.ts:17-27",
+        "demo/web/src/model-state.ts:47-109",
+        "sdk/go/event.go:52-63",
+        "sdk/go/service.go:291-303",
+        "sdk/go/supervisor.go:129-141",
+        "sdk/go/supervisor.go:13-25",
+        "sdk/go/supervisor.go:247-262",
+        "sdk/go/supervisor.go:82-112"
+      ],
+      "testAnchors": [
+        "demo/web/src/model-state.test.ts:27-73",
+        "sdk/go/service_integration_test.go:21-137",
+        "sdk/go/service_test.go:54-80"
+      ],
+      "docsAnchors": [
+        "DEVELOPING.md:127-132",
+        "DEVELOPING.md:69-132",
+        "DEVELOPING.md:73-80",
+        "README.md:133-135",
+        "README.md:227-250"
+      ],
+      "validationCommands": [
+        "go test ./..."
+      ]
     }
   },
   "coverage": {

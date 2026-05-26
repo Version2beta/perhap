@@ -1,5 +1,6 @@
 {
   "title": "Example: temporal risk emphasis",
+  "evidenceMode": "fresh",
   "scope": {
     "kind": "targeted",
     "roots": [

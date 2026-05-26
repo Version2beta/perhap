@@ -1,10 +1,20 @@
 # Example: strong structural signals
 
+- Evidence mode: `fresh`
 - Scope kind: `whole_repo`
 - Scope roots: `sdk/go`, `demo/web/src`, `demo/cart`, `README.md`, `DEVELOPING.md`, `spec/specification.md`
+- HEAD commit: `c86c6f1f1c2d`
+- Tree fingerprint: `3d0f77b9330ca7d8`
 - Scope files via `rg --files`: 20
 - Observation count: 10
 - Files touched by evidence: 14
+
+## Read Ledger
+
+- Code anchors: 11
+- Test anchors: 5
+- Docs anchors: 8
+- Validation commands: 2
 
 ## Dimensions
 

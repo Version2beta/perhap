@@ -1,10 +1,20 @@
 # Example: insufficient coverage
 
+- Evidence mode: `fresh`
 - Scope kind: `whole_repo`
 - Scope roots: `sdk/go`, `demo/web/src`, `demo/cart`, `README.md`, `DEVELOPING.md`, `spec/specification.md`
+- HEAD commit: `c86c6f1f1c2d`
+- Tree fingerprint: `c21b100412a01292`
 - Scope files via `rg --files`: 20
 - Observation count: 3
 - Files touched by evidence: 3
+
+## Read Ledger
+
+- Code anchors: 2
+- Test anchors: 0
+- Docs anchors: 1
+- Validation commands: 0
 
 ## Dimensions
 
