@@ -44,6 +44,12 @@ type supervisor[M any] struct {
 	closeTimer *time.Timer
 }
 
+type exceptionPayload struct {
+	WindowUUIDs      []string `json:"window_uuids"`
+	ValidationErrors []string `json:"validation_errors"`
+	LastValidUUID    string   `json:"last_valid_uuid"`
+}
+
 func newSupervisor[M any](entityID string, nc *nats.Conn, config ServiceConfig[M], onPassivate func()) *supervisor[M] {
 	var zero M
 	return newSupervisorWithSnapshot(entityID, nc, config, zero, "", onPassivate)
@@ -107,79 +113,31 @@ func (sv *supervisor[M]) run() {
 }
 
 func (sv *supervisor[M]) processEvent(event Event) {
-	// Deduplication: skip if already in window or before snapshot.
-	if sv.windowUUIDs[event.ID] {
-		log.Printf("perhap: DEDUP %s/%s type=%s id=%s", sv.config.Context, sv.entityID, event.Type, event.ID)
-		return
-	}
-	if sv.snapshotUUID != "" && event.ID <= sv.snapshotUUID {
-		log.Printf("perhap: DEDUP (before snapshot) %s/%s type=%s id=%s snapshot=%s", sv.config.Context, sv.entityID, event.Type, event.ID, sv.snapshotUUID)
+	if sv.shouldSkipEvent(event) {
 		return
 	}
 
 	log.Printf("perhap: processEvent %s/%s type=%s id=%s", sv.config.Context, sv.entityID, event.Type, event.ID)
-
-	// Insert into window at correct UUID position.
-	sv.window = append(sv.window, event)
-	sv.windowUUIDs[event.ID] = true
-	sort.Slice(sv.window, func(i, j int) bool {
-		return sv.window[i].ID < sv.window[j].ID
-	})
-
-	// Re-reduce from snapshot through full window.
-	// Deep-copy via JSON so that Go map references inside M are not shared with
-	// sv.snapshot — reducer mutations (map writes) must not corrupt the stored snapshot.
-	model := deepCopy(sv.snapshot)
-	var newEvents []Event
-	for _, e := range sv.window {
-		var evts []Event
-		var err error
-		model, evts, err = sv.config.Reducer(e.Type, model, e)
-		if err != nil {
-			log.Printf("perhap: reducer error %s/%s type=%s id=%s: %v — model unchanged",
-				sv.config.Context, sv.entityID, e.Type, e.ID, err)
-		}
-		newEvents = append(newEvents, evts...)
-	}
-
-	// Validate.
-	errs := sv.config.Validator(model)
-	if len(errs) == 0 {
-		sv.lastValid = model
-		sv.valid = true
-	} else {
-		log.Printf("perhap: VALIDATION FAILED %s/%s: %v", sv.config.Context, sv.entityID, errs)
-		sv.valid = false
-		sv.emitException(errs)
-	}
-
-	// Publish any new events from the reducer.
-	for _, newEvent := range newEvents {
-		sv.publishEvent(newEvent)
-	}
-
-	// Advance window if over size threshold.
+	sv.insertWindowEvent(event)
+	model, newEvents := sv.reduceEvents(sv.snapshot, sv.window)
+	sv.applyValidation(model)
+	sv.publishEvents(newEvents)
 	sv.maybeAdvanceSnapshot()
-
-	// Publish model update.
-	log.Printf("perhap: publishModel %s/%s reducedThrough=%s window=%d", sv.config.Context, sv.entityID, sv.reducedThrough(), len(sv.window))
-	sv.publishModel()
+	sv.logAndPublishModel()
 }
 
 func (sv *supervisor[M]) maybeAdvanceSnapshot() {
 	if len(sv.window) <= sv.config.WindowSize {
 		return
 	}
-	n := (sv.config.WindowSize + 1) / 2 // ceil(WindowSize/2)
-	toFold := sv.window[:n]
-	model := deepCopy(sv.snapshot)
-	for _, e := range toFold {
-		model, _, _ = sv.config.Reducer(e.Type, model, e)
-		delete(sv.windowUUIDs, e.ID)
+	toFold := sv.window[:sv.snapshotFoldCount()]
+	model, _ := sv.reduceEvents(sv.snapshot, toFold)
+	for _, event := range toFold {
+		delete(sv.windowUUIDs, event.ID)
 	}
 	sv.snapshot = model
 	sv.snapshotUUID = toFold[len(toFold)-1].ID
-	sv.window = sv.window[n:]
+	sv.window = sv.window[len(toFold):]
 }
 
 func (sv *supervisor[M]) setPending(p bool) {
@@ -250,9 +208,92 @@ func (sv *supervisor[M]) publishStoredEvent(event Event) {
 }
 
 func (sv *supervisor[M]) emitException(errs []ValidationError) {
+	data, err := json.Marshal(sv.exceptionPayload(errs))
+	if err != nil {
+		log.Printf("perhap: marshal _exception payload: %v", err)
+		return
+	}
+
+	event := Event{
+		ID:       NewEventID(),
+		EntityID: sv.entityID,
+		Context:  sv.config.Context,
+		Type:     "_exception",
+		Data:     data,
+	}
+	sv.publishStoredEvent(event)
+}
+
+func (sv *supervisor[M]) shouldSkipEvent(event Event) bool {
+	if sv.windowUUIDs[event.ID] {
+		log.Printf("perhap: DEDUP %s/%s type=%s id=%s", sv.config.Context, sv.entityID, event.Type, event.ID)
+		return true
+	}
+	if sv.snapshotUUID != "" && event.ID <= sv.snapshotUUID {
+		log.Printf("perhap: DEDUP (before snapshot) %s/%s type=%s id=%s snapshot=%s", sv.config.Context, sv.entityID, event.Type, event.ID, sv.snapshotUUID)
+		return true
+	}
+	return false
+}
+
+func (sv *supervisor[M]) insertWindowEvent(event Event) {
+	sv.window = append(sv.window, event)
+	sv.windowUUIDs[event.ID] = true
+	sort.Slice(sv.window, func(i, j int) bool {
+		return sv.window[i].ID < sv.window[j].ID
+	})
+}
+
+func (sv *supervisor[M]) reduceEvents(base M, events []Event) (M, []Event) {
+	// Deep-copy via JSON so that Go map references inside M are not shared with
+	// the stored snapshot — reducer mutations must not corrupt replay state.
+	model := deepCopy(base)
+	var newEvents []Event
+	for _, event := range events {
+		var emitted []Event
+		var err error
+		model, emitted, err = sv.config.Reducer(event.Type, model, event)
+		if err != nil {
+			log.Printf("perhap: reducer error %s/%s type=%s id=%s: %v — model unchanged",
+				sv.config.Context, sv.entityID, event.Type, event.ID, err)
+		}
+		newEvents = append(newEvents, emitted...)
+	}
+	return model, newEvents
+}
+
+func (sv *supervisor[M]) applyValidation(model M) {
+	errs := sv.config.Validator(model)
+	if len(errs) == 0 {
+		sv.lastValid = model
+		sv.valid = true
+		return
+	}
+
+	log.Printf("perhap: VALIDATION FAILED %s/%s: %v", sv.config.Context, sv.entityID, errs)
+	sv.valid = false
+	sv.emitException(errs)
+}
+
+func (sv *supervisor[M]) publishEvents(events []Event) {
+	for _, event := range events {
+		sv.publishEvent(event)
+	}
+}
+
+func (sv *supervisor[M]) logAndPublishModel() {
+	log.Printf("perhap: publishModel %s/%s reducedThrough=%s window=%d", sv.config.Context, sv.entityID, sv.reducedThrough(), len(sv.window))
+	sv.publishModel()
+}
+
+func (sv *supervisor[M]) snapshotFoldCount() int {
+	return (sv.config.WindowSize + 1) / 2 // ceil(WindowSize/2)
+}
+
+func (sv *supervisor[M]) exceptionPayload(errs []ValidationError) exceptionPayload {
 	msgs := make([]string, len(errs))
-	for i, e := range errs {
-		msgs[i] = e.Error()
+	for i, err := range errs {
+		msgs[i] = err.Error()
 	}
 
 	uuids := make([]string, len(sv.window))
@@ -260,24 +301,9 @@ func (sv *supervisor[M]) emitException(errs []ValidationError) {
 		uuids[i] = e.ID
 	}
 
-	type exceptionData struct {
-		WindowUUIDs      []string `json:"window_uuids"`
-		ValidationErrors []string `json:"validation_errors"`
-		LastValidUUID    string   `json:"last_valid_uuid"`
-	}
-	data, _ := json.Marshal(exceptionData{
+	return exceptionPayload{
 		WindowUUIDs:      uuids,
 		ValidationErrors: msgs,
 		LastValidUUID:    sv.reducedThrough(),
-	})
-
-	exID := NewEventID()
-	event := Event{
-		ID:       exID,
-		EntityID: sv.entityID,
-		Context:  sv.config.Context,
-		Type:     "_exception",
-		Data:     data,
 	}
-	sv.publishStoredEvent(event)
 }

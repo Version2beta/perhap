@@ -178,9 +178,7 @@ func (s *Service[M]) Run(ctx context.Context) error {
 }
 
 func (s *Service[M]) getOrCreateSupervisor(entityID string) *supervisor[M] {
-	s.mu.Lock()
-	sv, ok := s.supervisors[entityID]
-	s.mu.Unlock()
+	sv, ok := s.lookupSupervisor(entityID)
 	if ok {
 		return sv
 	}
@@ -208,102 +206,134 @@ func (s *Service[M]) getOrCreateSupervisor(entityID string) *supervisor[M] {
 }
 
 func (s *Service[M]) handleHydrationRequest(msg *nats.Msg, entityID string) {
-	s.mu.Lock()
-	sv, ok := s.supervisors[entityID]
-	s.mu.Unlock()
-
-	if !ok {
-		// No active supervisor — replay from JetStream.
-		log.Printf("perhap: hydration request %s/%s — no active supervisor, replaying from JetStream", s.config.Context, entityID)
-		model, reducedThrough, err := s.replayFromJetStream(entityID)
-		if err != nil {
-			log.Printf("perhap: hydration replay %s/%s: %v", s.config.Context, entityID, err)
-		}
-		log.Printf("perhap: hydration replay done %s/%s reducedThrough=%q", s.config.Context, entityID, reducedThrough)
-		data, _ := json.Marshal(model)
-		update := ModelUpdate{
-			EntityID:       entityID,
-			Context:        s.config.Context,
-			Domain:         s.config.Domain,
-			SnapshotUUID:   "",
-			Window:         []string{},
-			ReducedThrough: reducedThrough,
-			Pending:        false,
-			Valid:          true,
-			Reduction:      data,
-		}
-		resp, _ := json.Marshal(update)
-		msg.Respond(resp)
+	if sv, ok := s.lookupSupervisor(entityID); ok {
+		log.Printf("perhap: hydration request %s/%s — active supervisor responding", s.config.Context, entityID)
+		msg.Respond(sv.currentModelUpdate())
 		return
 	}
 
-	log.Printf("perhap: hydration request %s/%s — active supervisor responding", s.config.Context, entityID)
-	resp := sv.currentModelUpdate()
-	msg.Respond(resp)
+	log.Printf("perhap: hydration request %s/%s — no active supervisor, replaying from JetStream", s.config.Context, entityID)
+	msg.Respond(s.replayModelUpdate(entityID))
 }
 
 // replayFromJetStream rebuilds entity state by consuming all stored events
 // from the JetStream stream. Used for hydration when no supervisor is active.
 func (s *Service[M]) replayFromJetStream(entityID string) (M, string, error) {
 	var zero M
-	filterSubject := fmt.Sprintf("perhap.%s.%s.*", s.config.Context, entityID)
-
-	sub, err := s.js.SubscribeSync(filterSubject,
-		nats.DeliverAll(),
-		nats.AckNone(),
-	)
+	sub, err := s.subscribeReplay(entityID)
 	if err != nil {
 		return zero, "", fmt.Errorf("subscribe for replay: %w", err)
 	}
 	defer sub.Drain()
 
+	events := s.collectReplayEvents(sub)
+	sortReplayEvents(events)
+	log.Printf("perhap: replay %s/%s: collected %d events", s.config.Context, entityID, len(events))
+	return s.reduceReplayEvents(events), lastReplayEventID(events), nil
+}
+
+func (s *Service[M]) lookupSupervisor(entityID string) (*supervisor[M], bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sv, ok := s.supervisors[entityID]
+	return sv, ok
+}
+
+func (s *Service[M]) replayModelUpdate(entityID string) []byte {
+	model, reducedThrough, err := s.replayFromJetStream(entityID)
+	if err != nil {
+		log.Printf("perhap: hydration replay %s/%s: %v", s.config.Context, entityID, err)
+	}
+	log.Printf("perhap: hydration replay done %s/%s reducedThrough=%q", s.config.Context, entityID, reducedThrough)
+
+	data, _ := json.Marshal(model)
+	update := ModelUpdate{
+		EntityID:       entityID,
+		Context:        s.config.Context,
+		Domain:         s.config.Domain,
+		SnapshotUUID:   "",
+		Window:         []string{},
+		ReducedThrough: reducedThrough,
+		Pending:        false,
+		Valid:          true,
+		Reduction:      data,
+	}
+	resp, _ := json.Marshal(update)
+	return resp
+}
+
+func (s *Service[M]) subscribeReplay(entityID string) (*nats.Subscription, error) {
+	filterSubject := fmt.Sprintf("perhap.%s.%s.*", s.config.Context, entityID)
+	return s.js.SubscribeSync(filterSubject,
+		nats.DeliverAll(),
+		nats.AckNone(),
+	)
+}
+
+func (s *Service[M]) collectReplayEvents(sub *nats.Subscription) []Event {
 	var events []Event
 	for {
-		// Use a short timeout: 200ms for first message (handles empty entity),
-		// then rely on NumPending to detect the last message without extra wait.
+		// Use a short timeout: 200ms for the first message (handles empty entities),
+		// then rely on NumPending to stop once the stored backlog is exhausted.
 		msg, err := sub.NextMsg(200 * time.Millisecond)
 		if err != nil {
-			break // timeout — no more messages
+			return events
 		}
-		parts := strings.Split(msg.Subject, ".")
-		if len(parts) < 4 {
-			continue
+		if event, ok := decodeReplayEvent(msg); ok {
+			events = append(events, event)
 		}
-		eventType := parts[len(parts)-1]
-		if strings.HasPrefix(eventType, "_") {
-			// Skip _model, _model.get, _exception
-			meta, _ := msg.Metadata()
-			if meta != nil && meta.NumPending == 0 {
-				break
-			}
-			continue
-		}
-		var event Event
-		if err := json.Unmarshal(msg.Data, &event); err != nil {
-			continue
-		}
-		events = append(events, event)
-		meta, _ := msg.Metadata()
-		if meta != nil && meta.NumPending == 0 {
-			break // consumed all stored messages
+		if replayComplete(msg) {
+			return events
 		}
 	}
+}
 
-	log.Printf("perhap: replay %s/%s: collected %d events", s.config.Context, entityID, len(events))
+func decodeReplayEvent(msg *nats.Msg) (Event, bool) {
+	parts := strings.Split(msg.Subject, ".")
+	if len(parts) < 4 {
+		return Event{}, false
+	}
+	if isInternalReplaySubject(parts[len(parts)-1]) {
+		return Event{}, false
+	}
+	var event Event
+	if err := json.Unmarshal(msg.Data, &event); err != nil {
+		return Event{}, false
+	}
+	return event, true
+}
 
+func isInternalReplaySubject(segment string) bool {
+	return strings.HasPrefix(segment, "_")
+}
+
+func replayComplete(msg *nats.Msg) bool {
+	meta, _ := msg.Metadata()
+	return meta != nil && meta.NumPending == 0
+}
+
+func (s *Service[M]) reduceReplayEvents(events []Event) M {
+	var model M
 	if len(events) == 0 {
-		return zero, "", nil
+		return model
 	}
 
-	// Sort by UUID to guarantee correct reduction order.
+	for _, event := range events {
+		log.Printf("perhap: replay applying %s id=%s", event.Type, event.ID)
+		model, _, _ = s.config.Reducer(event.Type, model, event)
+	}
+	return model
+}
+
+func sortReplayEvents(events []Event) {
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].ID < events[j].ID
 	})
+}
 
-	model := zero
-	for _, e := range events {
-		log.Printf("perhap: replay applying %s id=%s", e.Type, e.ID)
-		model, _, _ = s.config.Reducer(e.Type, model, e)
+func lastReplayEventID(events []Event) string {
+	if len(events) == 0 {
+		return ""
 	}
-	return model, events[len(events)-1].ID, nil
+	return events[len(events)-1].ID
 }

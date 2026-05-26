@@ -68,70 +68,13 @@ export function watch(
   }
 
   console.log(`[perhap] watch ${context}/${entityId}`)
-  const handle: WatchHandle = {
-    context,
-    entityId,
-    sub: null as unknown as Subscription,
-    onUpdate,
-    lastState: createModelState(context, entityId),
-    buffer: [],
-    hydrated: false,
-    pendingEventIds: [],
-    reducer,
-  }
-
-  watchRegistry.set(watchKey(context, entityId), handle)
-
-  const subject = `perhap.${context}.${entityId}._model`
-  console.log(`[perhap] subscribing to ${subject}`)
-  handle.sub = nc.subscribe(subject, {
-    callback: (_err, msg) => {
-      const update: ModelUpdate = JSON.parse(sc.decode(msg.data))
-      console.log(`[perhap] _model msg: rt=${update.reduced_through || '(empty)'} pending=${update.pending} hydrated=${handle.hydrated}`)
-      if (!handle.hydrated) {
-        console.log('[perhap] buffering (not yet hydrated)')
-        handle.buffer.push(update)
-        return
-      }
-      applyConfirmedUpdateAndNotify(handle, update)
-    }
-  })
-
-  const hydSubject = `_perhap.${context}.${entityId}.model`
-  console.log(`[perhap] hydration request → ${hydSubject}`)
-  nc.request(hydSubject, sc.encode(''), { timeout: 5000 })
-    .then(msg => {
-      const hydration: ModelUpdate = JSON.parse(sc.decode(msg.data))
-      console.log(`[perhap] hydration response: rt=${hydration.reduced_through || '(empty)'} items=${JSON.stringify(hydration.reduction)}`)
-      handle.hydrated = true
-      applyConfirmedUpdateAndNotify(handle, hydration)
-
-      const drained = drainBufferedUpdates(handle.buffer, hydration.reduced_through)
-      for (const update of drained) {
-        applyConfirmedUpdateAndNotify(handle, update)
-      }
-      if (handle.buffer.length > 0) {
-        console.log(`[perhap] buffer drained: ${drained.length}/${handle.buffer.length} applied`)
-      }
-      handle.buffer = []
-    })
-    .catch(err => {
-      console.warn('[perhap] hydration failed:', err)
-      handle.hydrated = true
-
-      const buffered = sortBufferedUpdates(handle.buffer)
-      handle.buffer = []
-      if (buffered.length > 0) {
-        console.log(`[perhap] hydration timeout — applying ${buffered.length} buffered update(s) instead`)
-        for (const update of buffered) {
-          applyConfirmedUpdateAndNotify(handle, update)
-        }
-      }
-    })
+  const handle = createWatchHandle(context, entityId, onUpdate, reducer)
+  registerWatch(handle)
+  subscribeToModelUpdates(nc, handle)
+  requestHydration(nc, handle)
 
   return () => {
-    handle.sub.unsubscribe()
-    watchRegistry.delete(watchKey(context, entityId))
+    unregisterWatch(handle)
   }
 }
 
@@ -161,19 +104,7 @@ export function tell(
   console.log(`[perhap] tell: ${context}/${entityId} ${eventType} id=${eventId}`, data)
   const handle = watchRegistry.get(watchKey(context, entityId))
   if (handle) {
-    const transition = applyOptimisticUpdate(
-      handle.lastState,
-      handle.pendingEventIds,
-      eventId,
-      eventType,
-      data,
-      handle.reducer,
-    )
-    handle.pendingEventIds = transition.pendingEventIds
-    handle.lastState = transition.state
-    console.log(`[perhap] optimistic pending tracked: ${handle.pendingEventIds.length} event(s) in flight`)
-    handle.onUpdate(transition.state)
-    dispatchModelEvent(entityId, context, transition.state.reduction, transition.state.pending, transition.state.valid)
+    applyOptimisticUpdateAndNotify(handle, eventId, eventType, data)
   } else {
     console.log('[perhap] no local watch to update optimistically')
   }
@@ -195,6 +126,112 @@ function applyConfirmedUpdateAndNotify(handle: WatchHandle, update: ModelUpdate)
   handle.lastState = transition.state
   handle.onUpdate(handle.lastState)
   dispatchModelEvent(update.entity_id, update.context, update.reduction, handle.lastState.pending, update.valid)
+}
+
+function createWatchHandle(
+  context: string,
+  entityId: string,
+  onUpdate: (state: ModelState) => void,
+  reducer?: FrontendReducer
+): WatchHandle {
+  return {
+    context,
+    entityId,
+    sub: null as unknown as Subscription,
+    onUpdate,
+    lastState: createModelState(context, entityId),
+    buffer: [],
+    hydrated: false,
+    pendingEventIds: [],
+    reducer,
+  }
+}
+
+function registerWatch(handle: WatchHandle) {
+  watchRegistry.set(watchKey(handle.context, handle.entityId), handle)
+}
+
+function unregisterWatch(handle: WatchHandle) {
+  handle.sub.unsubscribe()
+  watchRegistry.delete(watchKey(handle.context, handle.entityId))
+}
+
+function subscribeToModelUpdates(connection: NatsConnection, handle: WatchHandle) {
+  const subject = `perhap.${handle.context}.${handle.entityId}._model`
+  console.log(`[perhap] subscribing to ${subject}`)
+  handle.sub = connection.subscribe(subject, {
+    callback: (_err, msg) => {
+      handleModelUpdate(handle, JSON.parse(sc.decode(msg.data)) as ModelUpdate)
+    }
+  })
+}
+
+function handleModelUpdate(handle: WatchHandle, update: ModelUpdate) {
+  console.log(`[perhap] _model msg: rt=${update.reduced_through || '(empty)'} pending=${update.pending} hydrated=${handle.hydrated}`)
+  if (!handle.hydrated) {
+    console.log('[perhap] buffering (not yet hydrated)')
+    handle.buffer.push(update)
+    return
+  }
+  applyConfirmedUpdateAndNotify(handle, update)
+}
+
+function requestHydration(connection: NatsConnection, handle: WatchHandle) {
+  const hydSubject = `_perhap.${handle.context}.${handle.entityId}.model`
+  console.log(`[perhap] hydration request → ${hydSubject}`)
+  connection.request(hydSubject, sc.encode(''), { timeout: 5000 })
+    .then(msg => finishHydration(handle, JSON.parse(sc.decode(msg.data)) as ModelUpdate))
+    .catch(err => recoverBufferedState(handle, err))
+}
+
+function finishHydration(handle: WatchHandle, hydration: ModelUpdate) {
+  console.log(`[perhap] hydration response: rt=${hydration.reduced_through || '(empty)'} items=${JSON.stringify(hydration.reduction)}`)
+  handle.hydrated = true
+  applyConfirmedUpdateAndNotify(handle, hydration)
+  applyBufferedUpdates(handle, drainBufferedUpdates(handle.buffer, hydration.reduced_through), 'buffer drained')
+}
+
+function recoverBufferedState(handle: WatchHandle, err: unknown) {
+  console.warn('[perhap] hydration failed:', err)
+  handle.hydrated = true
+  applyBufferedUpdates(handle, sortBufferedUpdates(handle.buffer), 'hydration timeout')
+}
+
+function applyBufferedUpdates(handle: WatchHandle, updates: ModelUpdate[], reason: 'buffer drained' | 'hydration timeout') {
+  const bufferedCount = handle.buffer.length
+  handle.buffer = []
+  if (updates.length === 0) return
+
+  if (reason === 'buffer drained') {
+    console.log(`[perhap] buffer drained: ${updates.length}/${bufferedCount} applied`)
+  } else {
+    console.log(`[perhap] hydration timeout — applying ${updates.length} buffered update(s) instead`)
+  }
+
+  for (const update of updates) {
+    applyConfirmedUpdateAndNotify(handle, update)
+  }
+}
+
+function applyOptimisticUpdateAndNotify(
+  handle: WatchHandle,
+  eventId: string,
+  eventType: string,
+  data: unknown,
+) {
+  const transition = applyOptimisticUpdate(
+    handle.lastState,
+    handle.pendingEventIds,
+    eventId,
+    eventType,
+    data,
+    handle.reducer,
+  )
+  handle.pendingEventIds = transition.pendingEventIds
+  handle.lastState = transition.state
+  console.log(`[perhap] optimistic pending tracked: ${handle.pendingEventIds.length} event(s) in flight`)
+  handle.onUpdate(transition.state)
+  dispatchModelEvent(handle.entityId, handle.context, transition.state.reduction, transition.state.pending, transition.state.valid)
 }
 
 function dispatchModelEvent(
