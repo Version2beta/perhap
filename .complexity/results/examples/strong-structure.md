@@ -3,8 +3,8 @@
 - Evidence mode: `fresh`
 - Scope kind: `whole_repo`
 - Scope roots: `sdk/go`, `demo/web/src`, `demo/cart`, `README.md`, `DEVELOPING.md`, `spec/specification.md`
-- HEAD commit: `c86c6f1f1c2d`
-- Tree fingerprint: `3d0f77b9330ca7d8`
+- HEAD commit: `1e28a3c253df`
+- Tree fingerprint: `2b722952e5b4f0f4`
 - Scope files via `rg --files`: 20
 - Observation count: 10
 - Files touched by evidence: 14

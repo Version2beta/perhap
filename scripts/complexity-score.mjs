@@ -157,6 +157,7 @@ function listScopeFiles(roots) {
     .split('\n')
     .map(line => line.trim())
     .filter(Boolean)
+    .sort()
 }
 
 function runGit(args) {

@@ -18,12 +18,12 @@
   },
   "runManifest": {
     "protocolVersion": 1,
-    "headCommit": "c86c6f1f1c2d96ebe0a9e7186022d798ba6d1053",
-    "globalStatusShort": " M .complexity/baselines/perhap-whole-repo-v1.json\n M .complexity/examples/insufficient-coverage.json\n M .complexity/examples/strong-structure.json\n M .complexity/examples/temporal-risk.json\n M .complexity/packet.schema.json\n M .complexity/results/baselines/perhap-whole-repo-v1.json\n M .complexity/results/baselines/perhap-whole-repo-v1.md\n M .complexity/results/examples/insufficient-coverage.json\n M .complexity/results/examples/insufficient-coverage.md\n M .complexity/results/examples/strong-structure.json\n M .complexity/results/examples/strong-structure.md\n M .complexity/results/examples/temporal-risk.json\n M .complexity/results/examples/temporal-risk.md\n M SCORING.md\n M scripts/complexity-score.mjs\n M scripts/complexity-score.test.mjs\n?? .complexity/RUN_RULES.md\nM .complexity/CALIBRATION.md",
+    "headCommit": "1e28a3c253df1a97f0f54e2525b22ef86f5b8e30",
+    "globalStatusShort": " M .complexity/results/baselines/perhap-whole-repo-v1.md\n M .complexity/results/examples/insufficient-coverage.json\n M .complexity/results/examples/insufficient-coverage.md\n M .complexity/results/examples/strong-structure.json\n M .complexity/results/examples/strong-structure.md\n M .complexity/results/examples/temporal-risk.json\n M .complexity/results/examples/temporal-risk.md\n M scripts/complexity-score.mjs\nM .complexity/results/baselines/perhap-whole-repo-v1.json",
     "scopeStatusShort": "",
-    "scopeFileListHash": "49e08e38de7e412643c1ea095f330d202b982cbe0d50952110f105bcc8f505fb",
-    "scopeContentHash": "36c8b41d03b4542e08ba90c3c770b033dc73849e9b797736749bea976bee45cf",
-    "treeFingerprint": "3d0f77b9330ca7d8021cf28996b049c8c8eac7ae7de5259c87209e6303ccc819",
+    "scopeFileListHash": "2ea1afae117003b4d2b8fe4128b4fe2e36e139babed6c0d12cc474f20c08f486",
+    "scopeContentHash": "d6edfb0c3182890811ddf41ea10c718afb0dd25a4485ba531602cbb952cca117",
+    "treeFingerprint": "2b722952e5b4f0f42e15ed53dd7c025e699c4be8a301b0fa579471e5351227d8",
     "readLedger": {
       "codeAnchors": [
         "demo/web/src/core.ts:159-235",

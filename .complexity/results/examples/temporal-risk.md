@@ -3,8 +3,8 @@
 - Evidence mode: `fresh`
 - Scope kind: `targeted`
 - Scope roots: `sdk/go`, `demo/web/src`, `README.md`, `DEVELOPING.md`
-- HEAD commit: `c86c6f1f1c2d`
-- Tree fingerprint: `38d8f6c24f9c57cf`
+- HEAD commit: `1e28a3c253df`
+- Tree fingerprint: `b7b865b5202a5910`
 - Scope files via `rg --files`: 17
 - Observation count: 10
 - Files touched by evidence: 10
