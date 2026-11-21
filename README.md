@@ -91,15 +91,19 @@ browser corrections, durable rejection with an exception on reducer errors,
 and requiring complete retained history until durable checkpoints exist.
 None of these proposals should be treated as shipped behavior.
 
-Validation gaps also remain: a real authenticated browser integration test
-(including denied access), and remediation/re-audit of the reported low-severity
-`esbuild` advisory `GHSA-g7r4-m6w7-qqqr` (the investigated lockfile has `0.28.0`;
-the proposed patched minimum is `0.28.1`). Existing connection-option and mocked
-transport tests do not establish authenticated end-to-end behavior.
+A real authenticated browser integration test (including denied access) remains
+a validation gap. Existing connection-option and mocked transport tests do not
+establish authenticated end-to-end behavior.
+
+Dependency remediation updates the Go dependencies and frontend lockfile, including
+`esbuild` past the `0.28.1` patched minimum for `GHSA-g7r4-m6w7-qqqr`, and raises
+the Go minimum to `1.26.11` for standard-library security fixes. GitHub alert closure
+requires publishing these changes and a subsequent Dependabot rescan; local
+remediation alone does not close remote alerts.
 
 ## Prerequisites and installation
 
-Use Go 1.26.2 or newer (see `go.mod`), Node.js 25 with npm (matching CI),
+Use Go 1.26.11 or newer (see `go.mod`), Node.js 25 with npm (matching CI),
 and `nats-server` with JetStream and WebSocket support for the demo.
 From a standalone Go application:
 
