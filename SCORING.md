@@ -16,10 +16,10 @@ Scope files are whatever `rg --files` returns for the chosen roots. That means:
 
 ## Observation Packet
 
-Packets live as JSON and follow [.complexity/packet.schema.json](/Users/rob/Development/perhap/.complexity/packet.schema.json:1).
+Packets live as JSON and follow [.complexity/packet.schema.json](.complexity/packet.schema.json).
 
-The repo-local calibration set lives in [.complexity/CALIBRATION.md](/Users/rob/Development/perhap/.complexity/CALIBRATION.md:1), including the canonical baseline packet and a few scored reference examples.
-Run freshness and reuse policy live in [.complexity/RUN_RULES.md](/Users/rob/Development/perhap/.complexity/RUN_RULES.md:1).
+The repo-local calibration set lives in [.complexity/CALIBRATION.md](.complexity/CALIBRATION.md), including the canonical baseline packet and a few scored reference examples.
+Run freshness and reuse policy live in [.complexity/RUN_RULES.md](.complexity/RUN_RULES.md).
 
 Each observation contains:
 
@@ -107,7 +107,7 @@ dimension_latent(d) =
   sum(weight(d,f) * latent_f) / sum(abs(weight(d,f)))
 ```
 
-The matrix is fixed in [.complexity/protocol.json](/Users/rob/Development/perhap/.complexity/protocol.json:1).
+The matrix is fixed in [.complexity/protocol.json](.complexity/protocol.json).
 
 ## Display Scores
 

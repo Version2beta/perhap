@@ -1,6 +1,9 @@
 package perhap
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestSupervisorShouldSkipEvent(t *testing.T) {
 	snapshotID := "00000000-0000-6000-8000-000000000010"
@@ -72,5 +75,19 @@ func TestSupervisorExceptionPayload(t *testing.T) {
 	}
 	if payload.LastValidUUID != "00000000-0000-6000-8000-000000000003" {
 		t.Fatalf("unexpected last valid UUID: %q", payload.LastValidUUID)
+	}
+}
+
+func TestSupervisor_ReducerErrorPreservesModelAndSuppressesEmissions(t *testing.T) {
+	sv := &supervisor[map[string]int]{config: ServiceConfig[map[string]int]{
+		Reducer: func(_ string, m map[string]int, _ Event) (map[string]int, []Event, error) {
+			m["count"] = 99
+			return nil, []Event{{Type: "must_not_emit"}}, fmt.Errorf("bad payload")
+		},
+	}}
+	base := map[string]int{"count": 2}
+	model, emitted, errs := sv.reduceEventsWithErrors(base, []Event{{ID: "001"}})
+	if model["count"] != 2 || base["count"] != 2 || len(emitted) != 0 || len(errs) != 1 {
+		t.Fatalf("model=%v base=%v emitted=%v errors=%v", model, base, emitted, errs)
 	}
 }

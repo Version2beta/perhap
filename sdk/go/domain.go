@@ -116,7 +116,7 @@ func (d *Domain[M]) WithPassivateTimeout(dur time.Duration) *Domain[M] {
 	return d
 }
 
-// WithLateEventPolicy sets how out-of-window events are handled.
+// WithLateEventPolicy records a reserved policy; it currently has no runtime effect.
 func (d *Domain[M]) WithLateEventPolicy(p LateEventPolicy) *Domain[M] {
 	d.lateEventPolicy = p
 	return d

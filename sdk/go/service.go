@@ -31,7 +31,8 @@ type Reducer[M any] func(eventType string, model M, event Event) (M, []Event, er
 type Validator[M any] func(model M) []ValidationError
 
 // LateEventPolicy declares how a domain handles events that arrive
-// after their window has passed.
+// after their window has passed. Reserved for future implementation: the current
+// supervisor skips events at or before its snapshot boundary regardless of policy.
 type LateEventPolicy int
 
 const (
@@ -132,7 +133,7 @@ func (s *Service[M]) Run(ctx context.Context) error {
 		// parts[3] is the first segment after entityId — internal if it starts with "_"
 		if strings.HasPrefix(parts[3], "_") {
 			// Queue subscriber ignores all internal subjects; the dedicated
-			// hydration subscriber handles _model.get responses.
+			// hydration subscriber handles _perhap requests.
 			return
 		}
 
@@ -186,7 +187,7 @@ func (s *Service[M]) getOrCreateSupervisor(entityID string) *supervisor[M] {
 	// No active supervisor — replay from JetStream to restore entity state so that
 	// events arriving after passivation or a server restart are applied on top of
 	// existing history rather than against an empty model.
-	snapshot, snapshotUUID, err := s.replayFromJetStream(entityID)
+	restored, err := s.replaySupervisor(entityID)
 	if err != nil {
 		log.Printf("perhap: getOrCreateSupervisor replay %s/%s: %v", s.config.Context, entityID, err)
 	}
@@ -196,11 +197,13 @@ func (s *Service[M]) getOrCreateSupervisor(entityID string) *supervisor[M] {
 	if sv, ok = s.supervisors[entityID]; ok {
 		return sv // another goroutine beat us while we were replaying
 	}
-	sv = newSupervisorWithSnapshot(entityID, s.nc, s.config, snapshot, snapshotUUID, func() {
+	sv = restored
+	sv.onPassivate = func() {
 		s.mu.Lock()
 		delete(s.supervisors, entityID)
 		s.mu.Unlock()
-	})
+	}
+	go sv.run()
 	s.supervisors[entityID] = sv
 	return sv
 }
@@ -219,17 +222,33 @@ func (s *Service[M]) handleHydrationRequest(msg *nats.Msg, entityID string) {
 // replayFromJetStream rebuilds entity state by consuming all stored events
 // from the JetStream stream. Used for hydration when no supervisor is active.
 func (s *Service[M]) replayFromJetStream(entityID string) (M, string, error) {
-	var zero M
+	sv, err := s.replaySupervisor(entityID)
+	return sv.currentModel(), sv.reducedThrough(), err
+}
+
+func (s *Service[M]) replaySupervisor(entityID string) (*supervisor[M], error) {
+	sv := &supervisor[M]{entityID: entityID, nc: s.nc, config: s.config,
+		valid: true, windowUUIDs: make(map[string]bool), inbox: make(chan Event, 64)}
 	sub, err := s.subscribeReplay(entityID)
 	if err != nil {
-		return zero, "", fmt.Errorf("subscribe for replay: %w", err)
+		return sv, fmt.Errorf("subscribe for replay: %w", err)
 	}
 	defer sub.Drain()
-
 	events := s.collectReplayEvents(sub)
 	sortReplayEvents(events)
-	log.Printf("perhap: replay %s/%s: collected %d events", s.config.Context, entityID, len(events))
-	return s.reduceReplayEvents(events), lastReplayEventID(events), nil
+	for _, event := range events {
+		if sv.shouldSkipEvent(event) {
+			continue
+		}
+		sv.insertWindowEvent(event)
+		model, _ := sv.reduceEvents(sv.snapshot, sv.window)
+		sv.valid = len(s.config.Validator(model)) == 0
+		if sv.valid {
+			sv.lastValid = deepCopy(model)
+		}
+		sv.maybeAdvanceSnapshot()
+	}
+	return sv, nil
 }
 
 func (s *Service[M]) lookupSupervisor(entityID string) (*supervisor[M], bool) {
@@ -240,26 +259,12 @@ func (s *Service[M]) lookupSupervisor(entityID string) (*supervisor[M], bool) {
 }
 
 func (s *Service[M]) replayModelUpdate(entityID string) []byte {
-	model, reducedThrough, err := s.replayFromJetStream(entityID)
+	sv, err := s.replaySupervisor(entityID)
 	if err != nil {
 		log.Printf("perhap: hydration replay %s/%s: %v", s.config.Context, entityID, err)
+		sv.valid = false
 	}
-	log.Printf("perhap: hydration replay done %s/%s reducedThrough=%q", s.config.Context, entityID, reducedThrough)
-
-	data, _ := json.Marshal(model)
-	update := ModelUpdate{
-		EntityID:       entityID,
-		Context:        s.config.Context,
-		Domain:         s.config.Domain,
-		SnapshotUUID:   "",
-		Window:         []string{},
-		ReducedThrough: reducedThrough,
-		Pending:        false,
-		Valid:          true,
-		Reduction:      data,
-	}
-	resp, _ := json.Marshal(update)
-	return resp
+	return sv.currentModelUpdate()
 }
 
 func (s *Service[M]) subscribeReplay(entityID string) (*nats.Subscription, error) {
@@ -312,28 +317,8 @@ func replayComplete(msg *nats.Msg) bool {
 	return meta != nil && meta.NumPending == 0
 }
 
-func (s *Service[M]) reduceReplayEvents(events []Event) M {
-	var model M
-	if len(events) == 0 {
-		return model
-	}
-
-	for _, event := range events {
-		log.Printf("perhap: replay applying %s id=%s", event.Type, event.ID)
-		model, _, _ = s.config.Reducer(event.Type, model, event)
-	}
-	return model
-}
-
 func sortReplayEvents(events []Event) {
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].ID < events[j].ID
 	})
-}
-
-func lastReplayEventID(events []Event) string {
-	if len(events) == 0 {
-		return ""
-	}
-	return events[len(events)-1].ID
 }

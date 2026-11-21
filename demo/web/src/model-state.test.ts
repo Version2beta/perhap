@@ -71,3 +71,16 @@ test('buffer helpers keep only newer updates and sort them oldest-first', () => 
     ]
   )
 })
+
+test('equal frontier idle close clears backend pending without clobbering local optimistic state', () => {
+  const opened = applyConfirmedUpdate(createModelState('store', 'cart-1'), [], update('001', true, { count: 1 }))
+  const local = applyOptimisticUpdate(opened.state, [], '002', 'increment', {}, () => ({ count: 2 }))
+  const closed = applyConfirmedUpdate(local.state, local.pendingEventIds, update('001', false, { count: 1 }))
+  assert.equal(closed.stale, false)
+  assert.equal(closed.state.backendPending, false)
+  assert.equal(closed.state.pending, true)
+  assert.deepEqual(closed.state.reduction, { count: 2 })
+  assert.equal(applyConfirmedUpdate(closed.state, closed.pendingEventIds, update('001', true)).stale, true)
+  assert.equal(applyConfirmedUpdate(opened.state, [], update('001', false)).state.pending, false)
+  assert.equal(drainBufferedUpdates([update('001', false)], '001').length, 1)
+})

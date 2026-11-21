@@ -249,3 +249,65 @@ func publishStoredException(t *testing.T, nc *nats.Conn, context, entityID strin
 	}
 	publishStoredEvent(t, nc, exception)
 }
+
+func TestService_ReplayRestoresLastValidAndContinuesInvalidHistory(t *testing.T) {
+	srv := runJetStreamServer(t)
+	nc := connectTestClient(t, srv)
+	defer nc.Close()
+	service, err := NewService(nc, ServiceConfig[counterSnapshot]{
+		Context: "store", Domain: "counter", Reducer: testCounterReducer,
+		Validator: func(m counterSnapshot) []ValidationError {
+			if m.Count < 0 {
+				return []ValidationError{{Message: "negative"}}
+			}
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := testCounterEvent(t, "invalid", "incremented", 2)
+	first.ID = "00000000-0000-6000-8000-000000000001"
+	second := testCounterEvent(t, "invalid", "incremented", -5)
+	second.ID = "00000000-0000-6000-8000-000000000002"
+	publishStoredEvent(t, nc, first)
+	publishStoredEvent(t, nc, second)
+	var hydration ModelUpdate
+	if err := json.Unmarshal(service.replayModelUpdate("invalid"), &hydration); err != nil {
+		t.Fatal(err)
+	}
+	if hydration.Valid || string(hydration.Reduction) != `{"count":2}` {
+		t.Fatalf("invalid hydration: %+v", hydration)
+	}
+	sv := service.getOrCreateSupervisor("invalid")
+	if sv.valid || sv.currentModel().Count != 2 {
+		t.Fatalf("invalid restored state: %+v", sv)
+	}
+	sv.processEvent(testCounterEvent(t, "invalid", "incremented", 4))
+	if !sv.valid || sv.currentModel().Count != 1 {
+		t.Fatalf("recovery must retain invalid events: got %v valid=%v", sv.currentModel(), sv.valid)
+	}
+}
+
+func TestSupervisor_ReducerFailurePublishesExceptionAndKeepsState(t *testing.T) {
+	srv := runJetStreamServer(t)
+	nc := connectTestClient(t, srv)
+	defer nc.Close()
+	service, err := NewService(nc, ServiceConfig[counterSnapshot]{Context: "store", Domain: "counter", Reducer: testCounterReducer})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sv := &supervisor[counterSnapshot]{entityID: "bad", nc: nc, config: service.config, windowUUIDs: make(map[string]bool), snapshot: counterSnapshot{Count: 2}, lastValid: counterSnapshot{Count: 2}}
+	sv.processEvent(Event{ID: NewEventID(), EntityID: "bad", Context: "store", Type: "incremented", Data: json.RawMessage(`"wrong payload type"`)})
+	if sv.currentModel().Count != 2 || !sv.pending {
+		t.Fatalf("bad model/pending: %v %v", sv.currentModel(), sv.pending)
+	}
+	sub, err := service.js.SubscribeSync("perhap.store.bad._exception", nats.DeliverAll(), nats.AckNone())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sub.Drain()
+	if _, err := sub.NextMsg(time.Second); err != nil {
+		t.Fatalf("missing exception: %v", err)
+	}
+}

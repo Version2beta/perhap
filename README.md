@@ -23,6 +23,107 @@ Browser → publish event → NATS → Service reduces → publish model update 
 
 The `_perhap.` prefix on hydration requests keeps them outside the JetStream stream filter, so NATS does not intercept the request-reply with a PubAck.
 
+## Status and deployment limits
+
+Implemented: Go reducers/validation, in-memory entity windows, JetStream replay,
+browser watch/tell, DOM bindings and in-memory optimistic updates.
+Planned: persistent snapshot cache, IndexedDB cache/outbox, offline replay,
+summary subscriptions and code generation. See the specification as design intent,
+not a list of shipped features.
+
+Known limits: run **one service instance per context/domain**, with only one domain
+model serving a context/entity. NATS queue groups distribute messages, not entity
+ownership; multiple replicas can diverge and hydration can have multiple responders.
+Live delivery uses core NATS (not a durable JetStream consumer); missed events are
+recovered on activation/replay, not automatically while an entity remains active.
+`LateEventPolicy` is currently reserved and ignored: events at or before the
+in-memory snapshot boundary are skipped without an exception. Full replay sorts
+all retained events, so late events can affect state after restart. Do not depend
+on a late-event policy for correctness yet.
+
+JetStream history must be retained for replay. Replay restores the last valid
+canonical UUID-ordered prefix (and the invalid working history for later repair),
+not necessarily the exact last-valid value observed under out-of-order live arrival.
+Reducers/validators must be deterministic and models JSON-serializable.
+The demo NATS configuration is unauthenticated development-only; production needs
+TLS and application-scoped NATS permissions/credential issuance.
+
+### Publication-readiness changes
+
+The current local changes forward browser `.creds` authentication, preserve
+optimistic state when idle-close clears pending (for both watch callbacks and
+`perhap:model` listeners), validate replayed prefixes, and discard reducer
+mutations and emitted events when the reducer returns an error. Replay retains
+invalid working history so later events can repair it. These fixes do not yet
+make incomplete or failed replay safe.
+
+API/protocol examples, installation instructions, CI development commands and
+portable documentation links have been corrected. The project uses the
+[MIT License](LICENSE).
+
+### Recovery direction: high availability deferred
+
+For this publication scope, **high availability and automatic entity distribution
+are deferred**. The intended recovery model is one isolated service process per
+domain, with a separate durable consumer for each context/domain: stop on an
+unrecoverable failure, restart, replay and resume. The previous process must be
+terminated before its replacement starts; a queue group does not enforce this.
+The existing restriction of one domain model per context/entity still applies.
+
+This is a design direction, **not an implemented delivery guarantee**. Safe
+crash-and-recover processing still requires:
+
+- Durable JetStream delivery rather than only a Core NATS queue subscription.
+- Acknowledgment only after a durable processing outcome.
+- Stable effect identities and deduplication for retries after a crash between
+  publishing an effect and acknowledging its input; no exactly-once promise.
+- Complete replay before serving authoritative state, without a gap between
+  replay and live consumption.
+- Explicit blocked/error state for corrupt history or consistently failing
+  events, rather than an endless restart loop or partial state reported as valid.
+
+### Remaining reliability work
+
+The next implementation pass must address replay transport/decode failures and
+late-event processing. Proposed contracts, still to be finalized, are durable
+late-event admission/application-order records, monotonic model revisions for
+browser corrections, durable rejection with an exception on reducer errors,
+and requiring complete retained history until durable checkpoints exist.
+None of these proposals should be treated as shipped behavior.
+
+Validation gaps also remain: a real authenticated browser integration test
+(including denied access), and remediation/re-audit of the reported low-severity
+`esbuild` advisory `GHSA-g7r4-m6w7-qqqr` (the investigated lockfile has `0.28.0`;
+the proposed patched minimum is `0.28.1`). Existing connection-option and mocked
+transport tests do not establish authenticated end-to-end behavior.
+
+## Prerequisites and installation
+
+Use Go 1.26.2 or newer (see `go.mod`), Node.js 25 with npm (matching CI),
+and `nats-server` with JetStream and WebSocket support for the demo.
+From a standalone Go application:
+
+```sh
+go mod init example.com/myapp # if not already a module
+go get github.com/version2beta/perhap/sdk/go@77b51dd01ec61ea99fb923afd833242b4f9d0bde
+```
+
+The revision above is the reviewed baseline, not a release tag; use the desired
+published revision when available. Import the SDK from the repository module:
+
+```go
+import (
+    "context"
+    "log"
+    "time" // for optional builder settings below
+    perhap "github.com/version2beta/perhap/sdk/go"
+    "github.com/nats-io/nats.go"
+)
+```
+
+The browser SDK is currently source in `demo/web`, not a published npm SDK.
+Build it using the development instructions and serve the resulting `perhap.js`.
+
 ## Go SDK
 
 ### Define your model
@@ -70,7 +171,10 @@ func onItemRemoved(cart Cart, ev ItemRemoved) Cart {
 
 ```go
 func main() {
-    nc, _ := nats.Connect(nats.DefaultURL)
+    nc, err := nats.Connect(nats.DefaultURL)
+    if err != nil {
+        log.Fatal(err)
+    }
     defer nc.Close()
 
     d := perhap.NewDomain[Cart]("store", "cart")
@@ -130,7 +234,7 @@ func (e Event) Time() (time.Time, error) // extract timestamp from UUID
 
 ### Supervisor lifecycle
 
-Each entity gets its own supervisor goroutine, created on demand and passivated after idle. On creation (or after passivation/restart) the supervisor replays from JetStream to restore prior state — no history is lost across restarts.
+Each entity gets its own supervisor goroutine, created on demand and passivated after idle. On creation (or after passivation/restart) the supervisor replays retained JetStream history to restore state, subject to the deployment limits above.
 
 The window holds recent events that haven't been folded into a snapshot yet. When the window exceeds `WindowSize`, the oldest half is folded into the snapshot. After `WindowIdleClose` with no new events, `pending` is set to false and a model update is published. After `PassivateTimeout` with no new events, the supervisor exits.
 
@@ -144,6 +248,13 @@ The window holds recent events that haven't been folded into a snapshot yet. Whe
 ```
 
 `perhap.js` auto-connects on load using the server from the meta tag (defaults to `ws://localhost:4223`). Export `ready` resolves once connected.
+
+`configure({ credentials })` and `<meta name="perhap-credentials">` accept the
+**contents of a NATS user .creds file**, not a path, URL or bearer token. Explicit
+options override meta tags. Configure credentials before the first connection:
+set meta tags before loading the auto-initializing bundle, or use the `core.ts`
+entry point for programmatic configuration. Credentials delivered to a browser
+are visible to that user; issue narrowly scoped credentials, never service secrets.
 
 ### Declarative bindings
 
@@ -164,7 +275,7 @@ The simplest path: put NATS subjects and data paths directly in HTML.
   <span data-bind="@context"></span>
 
   <!-- Bind to element attributes -->
-  <div data-bind-attr="aria-busy:pending"></div>
+  <div data-bind-attr="data-subtotal:subtotal"></div>
 
   <!-- Publish events on click -->
   <button data-tell="item_added" data-tell-data='{"sku":"sku-001","quantity":1,"price":9.99}'>
@@ -185,6 +296,9 @@ The simplest path: put NATS subjects and data paths directly in HTML.
 
 Nested `data-watch` elements each manage their own entity independently.
 
+Attribute bindings read reduction fields only; use the `data-pending` CSS hook
+for pending metadata.
+
 ### JavaScript API
 
 ```typescript
@@ -192,6 +306,7 @@ import { configure, watch, tell, ready } from './perhap.js'
 
 // Optional: override server (otherwise uses meta tag or default)
 await configure({ server: 'ws://localhost:4223' })
+await ready // configure logs failures; ready resolves only after successful connection
 
 // Watch an entity
 const unwatch = watch('store', 'cart-abc123', (state) => {
@@ -211,13 +326,15 @@ unwatch()
 
 ### Optimistic updates
 
-Provide a frontend reducer to `watch()` for instant UI feedback before the server responds:
+Provide a frontend reducer to `watch()` for instant UI feedback before the server responds (`renderCart` is your callback;
+this TypeScript must be compiled before use in a browser):
 
 ```typescript
 watch('store', 'cart-abc123', renderCart, (reduction, eventType, data) => {
   if (eventType === 'item_added') {
-    const items = { ...reduction.items as Record<string, number> }
-    items[data.sku] = (items[data.sku] ?? 0) + data.quantity
+    const payload = data as { sku: string; quantity: number }
+    const items = { ...(reduction.items as Record<string, number> ?? {}) }
+    items[payload.sku] = (items[payload.sku] ?? 0) + payload.quantity
     return { ...reduction, items }
   }
   return reduction
@@ -285,7 +402,7 @@ nats-server -c demo/nats.conf
 cd demo/cart && go run .
 
 # 3. Frontend
-cd demo/web && npm install && npm test && npm run build && npx serve .
+cd demo/web && npm ci && npm test && npm run build && npx serve .
 ```
 
 Open the URL printed by `serve`. Each browser tab gets its own cart (session-scoped entity ID).
@@ -295,6 +412,10 @@ See [DEVELOPING.md](DEVELOPING.md) for troubleshooting and development workflow.
 ## Specification
 
 [spec/specification.md](spec/specification.md) — the full design intent, including late event policies, snapshot semantics, and planned tooling.
+
+## License
+
+[MIT License](LICENSE). Copyright (c) 2026 Rob Martin.
 
 ## Lineage
 

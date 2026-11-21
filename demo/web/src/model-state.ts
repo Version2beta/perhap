@@ -78,8 +78,19 @@ export function applyConfirmedUpdate(
   pendingEventIds: string[],
   update: ModelUpdate
 ): { state: ModelState; pendingEventIds: string[]; stale: boolean } {
-  if (state.reducedThrough !== null && !isNewer(update.reduced_through, state.reducedThrough)) {
+  if (state.reducedThrough !== null && update.reduced_through < state.reducedThrough) {
     return { state, pendingEventIds, stale: true }
+  }
+
+  // At an equal frontier only accept open → closed. Never regress a closed
+  // window or overwrite reduction/optimistic state with an equal-version payload.
+  if (state.reducedThrough === update.reduced_through) {
+    if (!state.backendPending || update.pending) return { state, pendingEventIds, stale: true }
+    return {
+      stale: false,
+      pendingEventIds,
+      state: { ...state, backendPending: false, pending: pendingEventIds.length > 0 },
+    }
   }
 
   const nextPendingEventIds = pendingAfterConfirm(pendingEventIds, update.reduced_through)
@@ -102,9 +113,9 @@ export function drainBufferedUpdates(
   buffered: ModelUpdate[],
   hydrationReducedThrough: string
 ): ModelUpdate[] {
-  return buffered.filter(update => isNewer(update.reduced_through, hydrationReducedThrough))
+  return buffered.filter(update => update.reduced_through >= hydrationReducedThrough)
 }
 
 export function sortBufferedUpdates(buffered: ModelUpdate[]): ModelUpdate[] {
-  return buffered.slice().sort((a, b) => (isNewer(a.reduced_through, b.reduced_through) ? 1 : -1))
+  return buffered.slice().sort((a, b) => (a.reduced_through === b.reduced_through ? 0 : isNewer(a.reduced_through, b.reduced_through) ? 1 : -1))
 }

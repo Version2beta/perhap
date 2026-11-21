@@ -2,6 +2,7 @@
 
 ## Running the demo
 
+See [prerequisites and installation](README.md#prerequisites-and-installation) first.
 Three processes, three terminal tabs.
 
 ### 1. NATS server
@@ -27,7 +28,7 @@ and subscribes to `perhap.store.*.>` ready to process cart events.
 
 ```
 cd demo/web
-npm install       # first time only
+npm ci            # reproducible install from lockfile
 npm run build     # or: npm run watch (rebuilds on save)
 npx serve .       # or any static file server
 ```
@@ -49,11 +50,11 @@ If yours is different, update the `<meta name="perhap-server">` tag in `demo/web
 
 ## Go SDK development
 
-The Go SDK lives in `sdk/go/`. It is a standard Go module (`package perhap`).
+The Go SDK lives in `sdk/go/`. It is a package in the repository-root Go module (`package perhap`), not a separate module.
 
 ```
-go test ./sdk/go/...          # run tests
-go vet ./sdk/go/...           # lint
+go test ./...                # CI: all packages, from repository root
+go vet ./...                 # CI: all packages
 ```
 
 Key files:
@@ -93,7 +94,8 @@ The TypeScript SDK is split into focused modules under `demo/web/src/`.
 
 ```
 cd demo/web
-npm test         # pure state + UUID tests under Node
+npm test         # state, connection configuration + UUID tests under Node
+npx tsc --noEmit # CI typecheck
 npm run build    # one-shot
 npm run watch    # watch mode
 ```
@@ -122,7 +124,9 @@ Key files:
 Each `ModelUpdate` carries `reduced_through` — the UUID of the last event applied.
 Because UUIDv6 is timestamp-ordered, string comparison (`a > b`) correctly orders updates.
 Confirmed updates clear any optimistic event IDs that sort at or before `reduced_through`.
-Stale updates are dropped if `reduced_through` is not newer than the current state.
+Older frontiers are dropped. At an equal frontier, open → closed pending transitions
+are accepted without overwriting reduction or optimistic state; closed → open is dropped.
+Equal-frontier buffered idle-close messages are retained after hydration.
 
 ### Pending semantics
 
@@ -153,7 +157,8 @@ Stale updates are dropped if `reduced_through` is not newer than the current sta
 
 ### Model loses state after service restart
 
-State is replayed from JetStream on supervisor creation — restarts should be transparent.
+State is replayed from retained JetStream history on supervisor creation. See the
+[deployment and replay limits](README.md#status-and-deployment-limits).
 If state is lost, check that the JetStream stream still exists: `nats stream info PERHAP_{CONTEXT}`.
 
 ### Hydration request times out

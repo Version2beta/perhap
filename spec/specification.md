@@ -4,7 +4,18 @@
 **Status**: Working Draft  
 **Repository**: github.com/version2beta/perhap
 
-**Implementation note**: this specification is broader than the current reference SDK. The shipped browser SDK currently implements in-memory optimistic pending for active watches; persistent outbox and offline sections remain design targets rather than completed runtime features.
+**Implementation status**: this is a design specification, not a claim that every
+section ships today. Implemented: Go reducer/validator services, in-memory windows,
+JetStream replay, browser watch/tell, DOM bindings, and in-memory optimistic pending.
+Planned: snapshot cache/PostgreSQL, persistent outbox/cache, offline operation,
+summary subscriptions, visibility-only rendering, frontend cross-entity emission,
+and generation/discovery tooling. Late-event policies are **not implemented**:
+`LateEventPolicy` is reserved/ignored, and live events at/before the snapshot
+boundary are skipped without exception (including truly late events). Full replay
+can later include them. See [deployment limits](../README.md#status-and-deployment-limits)
+for single-instance/context restrictions and canonical replay semantics.
+Sections describing these planned capabilities are design targets. The Go API
+below reflects the shipped API; snapshot cache interfaces remain design-only.
 
 ---
 
@@ -362,11 +373,12 @@ Replication:  3 (production), 1 (development)
 Storage:      file
 ```
 
-Model update and internal control subjects are excluded from the event stream — they are ephemeral push notifications and request/reply endpoints, not domain events:
+The current stream filter includes model updates and exceptions. Hydration request/reply
+uses a separate prefix to avoid a JetStream PubAck intercepting the response:
 
 ```
-Excluded subjects: perhap.{context}.*._model
-                   perhap.{context}.*._model.get
+Current stream also stores `_model` and `_exception` updates; replay skips them.
+Hydration: _perhap.{context}.*.model (outside the stream filter)
 ```
 
 All Perhap-internal subjects use the `_` prefix on the terminal token. Any future internal subjects follow this convention and must be added to the stream exclusion list. Domain event types must not start with `_`.
@@ -509,7 +521,7 @@ If no acknowledgment arrives within the timeout, the event enters the outbox for
 When a frontend context loads, the client must avoid a race between the hydration reply and subscription updates. The correct sequence:
 
 1. **Open subscription first**, buffering any incoming model updates without applying them
-2. **Request the current model** via `_model.get`
+2. **Request the current model** via `_perhap.{context}.{entityId}.model`
 3. **Apply the hydration reply** as the starting model state, recording its `reduced_through` UUID
 4. **Drain the buffer**: apply any buffered model updates whose `reduced_through` UUID is lexicographically greater than the hydration UUID
 5. Begin processing new subscription updates normally
@@ -523,7 +535,7 @@ const sub = nc.subscribe(`perhap.store.${entityId}.>`, {
 })
 
 const reply = await nc.request(
-  `perhap.store.${entityId}._model.get`,
+  `_perhap.store.${entityId}.model`,
   Empty,
   { timeout: 5000 }
 )
@@ -539,7 +551,8 @@ buffer.length = 0
 // hand off subscription to normal update handler
 ```
 
-A domain service listens on `perhap.{context}.{entity_id}._model.get` and replies with the current model. Model updates with a `reduced_through` UUID lexicographically less than or equal to the hydration UUID are discarded as already-applied.
+A domain service listens on `_perhap.{context}.{entity_id}.model` and replies with the current model. Older `reduced_through` frontiers are discarded. Equal-frontier idle-close updates
+are retained to allow pending to transition from true to false.
 
 ---
 
@@ -600,7 +613,7 @@ Commutativity is **not a universal requirement** for all reducers. It is specifi
 
 An event arrives **late** when its UUID timestamp falls before the current snapshot boundary — the window has already advanced past it.
 
-Three policies are supported, declared per domain:
+Three policies are planned (the current SDK does not implement them):
 
 **Accept and rebuild**: the late event is inserted into the event history at its correct UUID position. The supervisor rehydrates from the last snapshot that precedes the late event's UUID, re-reduces all subsequent events including the late event, and validates. Expensive but correct. Appropriate for high-integrity domains.
 
@@ -608,7 +621,7 @@ Three policies are supported, declared per domain:
 
 **Accept with flag**: the late event is applied at the current head with a metadata flag indicating it arrived out of its window. The model is marked as potentially affected by out-of-window ordering. Appropriate for low-stakes domains where approximate ordering is acceptable.
 
-The late event policy is a domain declaration, not a framework default. Domains must declare their policy explicitly.
+These declarations are design targets; setting the current SDK enum does not change behavior.
 
 ---
 
@@ -624,7 +637,7 @@ A domain service joins Perhap by:
 
 1. Connecting to NATS with service credentials
 2. Subscribing to `perhap.{context}.*.>` with a queue group named `perhap.{context}.{domain}`
-3. Listening on `perhap.{context}.{entity_id}._model.get` for hydration requests
+3. Listening on `_perhap.{context}.{entity_id}.model` for hydration requests
 4. Publishing events to `perhap.{context}.{entity_id}.{event_type}` with `Nats-Msg-Id` set to the event UUID
 5. Publishing model updates to `perhap.{context}.{entity_id}._model`
 
@@ -633,7 +646,7 @@ No other integration is required. The bus is the API.
 ### The Reducer Interface
 
 ```
-reduce(event_type: String, model: M, event: Event) → (M, []Event)
+reduce(event_type: String, model: M, event: Event) → (M, []Event, error)
 ```
 
 Returns the new model and any new events to publish. The reducer does not validate; validation is a separate concern called by the supervisor after reduction.
@@ -725,7 +738,7 @@ The snapshot cache is a performance layer, not the system of record. Error seman
 - **`Load` returns error**: treat as not-found; log the error; rebuild from JetStream.
 - **`Save` returns error**: log the error; continue processing. The snapshot will be rebuilt from JetStream on next activation. Do not halt event processing for a cache write failure.
 
-If the cache is lost entirely, all supervisors rebuild from JetStream on next activation. This is expensive but correct. The reference implementation uses PostgreSQL with a schema of:
+If the cache is lost entirely, all supervisors rebuild from JetStream on next activation. This is expensive but correct. The planned PostgreSQL cache would use a schema of:
 
 ```sql
 CREATE TABLE perhap_snapshots (
@@ -759,13 +772,13 @@ type Event struct {
     EntityID      string          `json:"entity_id"`
     Context       string          `json:"context"`
     Type          string          `json:"type"`
-    CausationID   string          `json:"causation_id"`
+    CausationID   *string         `json:"causation_id"`
     CorrelationID string          `json:"correlation_id"`
     Data          json.RawMessage `json:"data"`
 }
 
 // Reducer function type
-type Reducer[M any] func(eventType string, model M, event Event) (M, []Event)
+type Reducer[M any] func(eventType string, model M, event Event) (M, []Event, error)
 
 // Validator function type
 type Validator[M any] func(model M) []ValidationError
@@ -775,25 +788,19 @@ type ValidationError struct {
     Message string
 }
 
-// Snapshot cache interface
-type SnapshotCache[M any] interface {
-    Save(ctx context.Context, entityID, context, domain, snapshotUUID string, model M) error
-    Load(ctx context.Context, entityID, context, domain string) (snapshotUUID string, model M, err error)
-}
-
 // Domain service configuration
 type ServiceConfig[M any] struct {
     Context          string
     Domain           string
     Reducer          Reducer[M]
     Validator        Validator[M]
-    SnapshotCache    SnapshotCache[M]
     WindowSize       int           // max events in window before snapshot advancement
                                   // when window.len > WindowSize, oldest ceil(WindowSize/2)
                                   // events are folded into the snapshot. Default: 100.
     WindowIdleClose  time.Duration // idle before pending→false published. Default: 500ms.
     PassivateTimeout time.Duration // idle after window close before supervisor terminates
-    LateEventPolicy  LateEventPolicy
+    LateEventPolicy  LateEventPolicy // reserved; currently ignored
+    StreamReplicas   int // default 1
 }
 
 type LateEventPolicy int
@@ -807,7 +814,10 @@ const (
 ### Service Lifecycle
 
 ```go
-svc := perhap.NewService(nc, config)
+svc, err := perhap.NewService(nc, config)
+if err != nil {
+    log.Fatal(err)
+}
 if err := svc.Run(ctx); err != nil {
     log.Fatal(err)
 }
@@ -946,7 +956,7 @@ async function subscribe<M>(
 On subscribe:
 1. Load reduction from IndexedDB cache (if available), render immediately
 2. **Open NATS subscription** on `perhap.{context}.{entityId}.>`, buffering model updates
-3. Request current model via `_model.get`; apply as starting state
+3. Request current model via `_perhap.{context}.{entityId}.model`; apply as starting state
 4. Drain buffered updates: apply any with `reduced_through` UUID newer than hydration
 5. Apply any pending outbox events for this entity using the frontend reducer (model-transformation only — cross-entity event emission is suppressed during this replay to avoid duplicating events already in the outbox)
 
@@ -1033,7 +1043,7 @@ function registerSummary<S>(config: SummarySubscription<S>): () => void
 
 Summary models are subscribed at application startup and remain active for the application lifetime.
 
-**Offline behavior**: when the NATS connection drops, summary subscriptions freeze at their last received value. Their IndexedDB cache entries are read on reconnect to display the last-known value during the reconnection window. On reconnect, summary subscriptions re-request via `_model.get` to catch up before resuming subscription updates.
+**Offline behavior**: when the NATS connection drops, summary subscriptions freeze at their last received value. Their IndexedDB cache entries are read on reconnect to display the last-known value during the reconnection window. On reconnect, summary subscriptions re-request via `_perhap.{context}.{entityId}.model` to catch up before resuming subscription updates.
 
 ---
 
@@ -1049,9 +1059,11 @@ The declarative attribute layer is a lightweight (~150 lines of JavaScript) enha
 <script type="module" src="/perhap.js"></script>
 ```
 
-The SDK reads server and credential configuration from `<meta>` tags at load time. No JavaScript configuration required for typical deployments.
+The SDK reads server and credential configuration from `<meta>` tags at load time.
+Credentials are the contents of a NATS user `.creds` file (not a token or URL);
+explicit `configure` options override meta tags before the initial connection. No JavaScript configuration required for typical deployments.
 
-**Security note**: embedding credentials in a `<meta>` tag is convenient for development but is a plaintext exposure risk in production — credentials appear in page source, browser history, and any analytics or error-tracking tools on the page. The recommended production pattern: server-render the `<meta name="perhap-credentials">` tag dynamically with a short-lived, session-scoped token rather than embedding long-lived credentials statically. The credential issuance mechanism is outside Perhap's scope; the application is responsible for scoping credentials appropriately before delivery to the browser.
+**Security note**: embedding credentials in a `<meta>` tag is convenient for development but is a plaintext exposure risk in production — credentials appear in page source, browser history, and any analytics or error-tracking tools on the page. The recommended production pattern: server-render the `<meta name="perhap-credentials">` tag dynamically with short-lived, narrowly scoped NATS user credentials in `.creds` format rather than embedding long-lived credentials statically. The credential issuance mechanism is outside Perhap's scope; the application is responsible for scoping credentials appropriately before delivery to the browser.
 
 ### data-watch
 
@@ -1469,7 +1481,7 @@ On NATS reconnect:
 
 1. Flush pending outbox entries in UUID order, sequentially
 2. Re-establish model subscriptions for active context
-3. Request current model via `_model.get`
+3. Request current model via `_perhap.{context}.{entityId}.model`
 4. If `reduced_through` UUID of received model is newer than the earliest pending outbox event, optimistic state may have been superseded — surface this if the entity is visible
 
 ### Conflict Handling

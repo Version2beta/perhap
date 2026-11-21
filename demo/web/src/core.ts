@@ -11,6 +11,7 @@ import {
   type ModelUpdate,
 } from './model-state'
 import { newUUIDv6 } from './uuid'
+import { connectionOptions } from './connection-options'
 
 interface WatchHandle {
   context: string
@@ -44,11 +45,14 @@ export async function configure(opts?: { server?: string; credentials?: string }
     ?? document.querySelector<HTMLMetaElement>('meta[name="perhap-server"]')?.content
     ?? 'ws://localhost:4223'
 
+  const credentials = opts?.credentials
+    ?? document.querySelector<HTMLMetaElement>('meta[name="perhap-credentials"]')?.content
+
   if (nc) return
 
   console.log('[perhap] connecting to', server)
   try {
-    nc = await connect({ servers: server })
+    nc = await connect(connectionOptions(server, credentials))
     console.log('[perhap] connected to', server)
     readyResolve?.()
   } catch (err) {
@@ -125,7 +129,7 @@ function applyConfirmedUpdateAndNotify(handle: WatchHandle, update: ModelUpdate)
   handle.pendingEventIds = transition.pendingEventIds
   handle.lastState = transition.state
   handle.onUpdate(handle.lastState)
-  dispatchModelEvent(update.entity_id, update.context, update.reduction, handle.lastState.pending, update.valid)
+  dispatchModelEvent(update.entity_id, update.context, handle.lastState.reduction, handle.lastState.pending, handle.lastState.valid)
 }
 
 function createWatchHandle(

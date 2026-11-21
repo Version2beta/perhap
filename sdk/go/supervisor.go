@@ -118,8 +118,12 @@ func (sv *supervisor[M]) processEvent(event Event) {
 	}
 
 	log.Printf("perhap: processEvent %s/%s type=%s id=%s", sv.config.Context, sv.entityID, event.Type, event.ID)
+	sv.pending = true
 	sv.insertWindowEvent(event)
-	model, newEvents := sv.reduceEvents(sv.snapshot, sv.window)
+	model, newEvents, errs := sv.reduceEventsWithErrors(sv.snapshot, sv.window)
+	if len(errs) > 0 {
+		sv.emitException(errs)
+	}
 	sv.applyValidation(model)
 	sv.publishEvents(newEvents)
 	sv.maybeAdvanceSnapshot()
@@ -245,21 +249,28 @@ func (sv *supervisor[M]) insertWindowEvent(event Event) {
 }
 
 func (sv *supervisor[M]) reduceEvents(base M, events []Event) (M, []Event) {
+	model, emitted, _ := sv.reduceEventsWithErrors(base, events)
+	return model, emitted
+}
+
+func (sv *supervisor[M]) reduceEventsWithErrors(base M, events []Event) (M, []Event, []ValidationError) {
+	var errs []ValidationError
 	// Deep-copy via JSON so that Go map references inside M are not shared with
 	// the stored snapshot — reducer mutations must not corrupt replay state.
 	model := deepCopy(base)
 	var newEvents []Event
 	for _, event := range events {
-		var emitted []Event
-		var err error
-		model, emitted, err = sv.config.Reducer(event.Type, model, event)
+		candidate, emitted, err := sv.config.Reducer(event.Type, deepCopy(model), event)
 		if err != nil {
 			log.Printf("perhap: reducer error %s/%s type=%s id=%s: %v — model unchanged",
 				sv.config.Context, sv.entityID, event.Type, event.ID, err)
+			errs = append(errs, ValidationError{Message: err.Error()})
+			continue
 		}
+		model = candidate
 		newEvents = append(newEvents, emitted...)
 	}
-	return model, newEvents
+	return model, newEvents, errs
 }
 
 func (sv *supervisor[M]) applyValidation(model M) {
