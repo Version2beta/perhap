@@ -204,4 +204,49 @@ func diagnosticLess(a, b Diagnostic) bool {
 
 // Reconcile computes one pure next-state/intention without allocating IDs or
 // revision numbers. Unknown/failed evidence never justifies disappearance.
-func Reconcile(previous Assertion, computation Computation) Decision { return Decision{} }
+func Reconcile(previous Assertion, computation Computation) Decision {
+	if computation.Evaluation != "valid" || computation.Completeness != "complete_as_of_frontier" {
+		return reconcileUncertain(previous, computation.Key)
+	}
+	if !computation.Present {
+		return reconcileAbsent(previous, computation.Key)
+	}
+	return reconcilePresent(previous, computation)
+}
+
+// reconcileUncertain keeps the prior value and availability: failed, invalid or
+// incomplete evidence never retracts and never supplies a new value.
+func reconcileUncertain(previous Assertion, key Key) Decision {
+	next := Assertion{Revision: previous.Revision, PublicationID: previous.PublicationID, Status: "unresolved", Value: previous.Value, ValueAvailable: previous.ValueAvailable}
+	if previous.Status == "unresolved" {
+		return Decision{Assertion: next}
+	}
+	return Decision{Assertion: next, Intention: &Intention{Key: key, ExpectedRevision: previous.Revision, Op: "status", Status: "unresolved"}}
+}
+
+// reconcileAbsent is complete valid absence: the assertion is retracted and its
+// value is unavailable.
+func reconcileAbsent(previous Assertion, key Key) Decision {
+	next := Assertion{Revision: previous.Revision, PublicationID: previous.PublicationID, Status: "retracted"}
+	if previous.Status == "retracted" {
+		return Decision{Assertion: next}
+	}
+	return Decision{Assertion: next, Intention: &Intention{Key: key, ExpectedRevision: previous.Revision, Op: "retract"}}
+}
+
+// reconcilePresent is complete valid presence: the computed value becomes current.
+// Only unchanged current content needs no intention; recovering unresolved content
+// with the same value needs a status change, not a new value.
+func reconcilePresent(previous Assertion, computation Computation) Decision {
+	next := Assertion{Revision: previous.Revision, PublicationID: previous.PublicationID, Status: "current", Value: computation.Value, ValueAvailable: true}
+	intention := &Intention{Key: computation.Key, ExpectedRevision: previous.Revision}
+	switch {
+	case !previous.ValueAvailable || previous.Status == "retracted" || previous.Value != computation.Value:
+		intention.Op, intention.Value = "upsert", computation.Value
+	case previous.Status == "current":
+		return Decision{Assertion: next}
+	default:
+		intention.Op, intention.Status = "status", "current"
+	}
+	return Decision{Assertion: next, Intention: intention}
+}
