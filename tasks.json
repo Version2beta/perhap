@@ -352,6 +352,19 @@
       "tier": "normal"
     },
     {
+      "id": "B3REVIEW",
+      "title": "Review regressions: anchor, ownership encoding, session fences, deadlines and opaque errors",
+      "test": "go test -count=1 -v ./sdk/go/observation -run '^(TestRetainedBootstrapAnchor|TestRetainedOwnerEncoding|TestRecoveryEnvelopeSessionFence|TestRecoveryAuthorityDeadlines|TestRecoveryErrorsAreOpaque)$'",
+      "expect": [
+        "^--- PASS: TestRetainedBootstrapAnchor \\(.*\\)$",
+        "^--- PASS: TestRetainedOwnerEncoding \\(.*\\)$",
+        "^--- PASS: TestRecoveryEnvelopeSessionFence \\(.*\\)$",
+        "^--- PASS: TestRecoveryAuthorityDeadlines \\(.*\\)$",
+        "^--- PASS: TestRecoveryErrorsAreOpaque \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
       "id": "B3ALL",
       "title": "All prior stages, recovery, full Go/race/vet and frontend checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
@@ -380,7 +393,12 @@
         "^--- PASS: TestRecoveryUnknownAcquisition \\(.*\\)$",
         "^--- PASS: TestRecoveryOutputCrash \\(.*\\)$",
         "^--- PASS: TestRecoveryFailureCapacityAndCleanup \\(.*\\)$",
-        "^--- PASS: TestRecoveryProofFailures \\(.*\\)$"
+        "^--- PASS: TestRecoveryProofFailures \\(.*\\)$",
+        "^--- PASS: TestRetainedBootstrapAnchor \\(.*\\)$",
+        "^--- PASS: TestRetainedOwnerEncoding \\(.*\\)$",
+        "^--- PASS: TestRecoveryEnvelopeSessionFence \\(.*\\)$",
+        "^--- PASS: TestRecoveryAuthorityDeadlines \\(.*\\)$",
+        "^--- PASS: TestRecoveryErrorsAreOpaque \\(.*\\)$"
       ],
       "tier": "normal"
     }

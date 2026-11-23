@@ -61,3 +61,24 @@ MAX_ITER=12 MAX_ATTEMPTS=3 scripts/loop.sh
 Pinned default model commands unchanged; no substitution or push/merge/upstream edits.
 Final 55-row execution coverage will be recorded separately from historical
 review inventory; partial related baseline evidence is not automatically a full pass.
+
+## Verified final-review overlay
+
+Initial kit 15f1082e843755192c2a7168b4f3ec6b7eb655db; judged planner
+094becf9491c2f67ea66d44d10f3a9441cb46d9e and recovery
+c025e2cb429c621a97e12dc2339e3fdaa8b50a8d passed original23 groups in two
+iterations, attempt1 each. Source review added B3REVIEW without altering prior tests.
+Actual judged implementation reproduced zero bootstrap anchor/moving retry contract,
+empty session envelope fences, absent proof/admission deadlines, callback invocation
+after expired admission, raw wrapped context diagnostics, and acceptance of non-ASCII
+owned IDs. Invalid UTF-8 IDs can be changed by private JSON encoding and strand a pin;
+this is why declared ASCII validation is substantive, not cosmetic normalization.
+
+New tests freeze the SAME approved contract, not additional production features.
+Original independent private reference, with clarified bounded admission and safe
+context error handling, passes all24 exact judge groups. Restoring actual judged
+code unchanged: prior22 focused groups pass, B3REVIEW and B3ALL fail through test
+commands. Private implementation removed before overlay commit. No previous test
+weakened, no new exported signatures, no schema/dependency changes. Corrective run
+uses new B3REVIEW ID and MAX_ITER=10 MAX_ATTEMPTS=3; initial2 + remaining10 preserves
+the approved aggregate 12-iteration cap. Exact script/model commands unchanged.

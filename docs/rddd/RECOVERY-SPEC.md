@@ -89,6 +89,19 @@ repeated-frame application/conflict quarantine is not implemented by this server
 complete exercised oracles, not case labels or related baseline tests. All55 rows
 enumerated in final evidence. S/client-only rows remain unexecuted as applicable.
 
+## Final-review obligations (same approved contract, no API changes)
+
+Bootstrap Acquire(after=0) returns its pinned snapshot as Anchor, including retries
+following newer commits. Its tail cannot start below that anchor. Owned IDs and owner
+names must be ASCII and losslessly round-trip storage; invalid UTF-8 must not silently
+change an ID and strand its pin. Record-bearing envelopes carry a nonempty opaque
+session fence, stable for that session and different after reconnect, never a Plan ID.
+CallbackTimeout applies to Issue, Verify and admission checks, not just recipients.
+Expired admission results cannot invoke recipient even if Check returned nil. Context
+cancellation/deadline errors from authority, proofs and storage must return canonical
+safe categories, not private wrapped diagnostics. These are tested by the corrective
+B3REVIEW group after reproducing failures in the initial judged implementation.
+
 Independent reference outside checkout; new tasks fail on stubs and full unchanged
 judge passes reference before clean kit commit. Preserve Stage3A/3B1 tests and APIs.
 Then MAX_ITER=12 MAX_ATTEMPTS=3 scripts/loop.sh; full Go/race/vet/judge and source
