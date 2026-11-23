@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/observation sdk/go/viewjournal",
-  "format_check": "test -z \"$(gofmt -l sdk/go/observation sdk/go/viewjournal)\"",
+  "format": "gofmt -w sdk/go/submission",
+  "format_check": "test -z \"$(gofmt -l sdk/go/submission)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -80,7 +80,10 @@
     "^sdk/go/observation/contracts\\.go$",
     "^sdk/go/observation/testdata/",
     "^sdk/go/viewjournal/(contracts|journal|retained_contracts)\\.go$",
-    "^sdk/go/observation/(session|recovery_contracts)\\.go$"
+    "^sdk/go/observation/(session|recovery_contracts)\\.go$",
+    "^sdk/go/observation/",
+    "^sdk/go/viewjournal/",
+    "^sdk/go/submission/contracts\\.go$"
   ],
   "tasks": [
     {
@@ -365,8 +368,49 @@
       "tier": "normal"
     },
     {
-      "id": "B3ALL",
-      "title": "All prior stages, recovery, full Go/race/vet and frontend checks",
+      "id": "GSIDENTITY",
+      "title": "TestSubmissionIdentityAndEvaluation, TestSubmissionSemanticContextAndBounds",
+      "test": "go test -count=1 -v ./sdk/go/submission -run '^(TestSubmissionIdentityAndEvaluation|TestSubmissionSemanticContextAndBounds)$'",
+      "expect": [
+        "^--- PASS: TestSubmissionIdentityAndEvaluation \\(.*\\)$",
+        "^--- PASS: TestSubmissionSemanticContextAndBounds \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "GSFACTS",
+      "title": "TestSubmissionConcurrentAndLookupCuts, TestSubmissionPendingAuthorityAndCancellation, TestSubmissionVersionedFacts",
+      "test": "go test -count=1 -v ./sdk/go/submission -run '^(TestSubmissionConcurrentAndLookupCuts|TestSubmissionPendingAuthorityAndCancellation|TestSubmissionVersionedFacts)$'",
+      "expect": [
+        "^--- PASS: TestSubmissionConcurrentAndLookupCuts \\(.*\\)$",
+        "^--- PASS: TestSubmissionPendingAuthorityAndCancellation \\(.*\\)$",
+        "^--- PASS: TestSubmissionVersionedFacts \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "GSDURABLE",
+      "title": "TestSubmissionFailureCapacityAndRecovery, TestSubmissionRealCrashAndOwner, TestSubmissionCommittedRecoveryIntegrity",
+      "test": "go test -count=1 -v ./sdk/go/submission -run '^(TestSubmissionFailureCapacityAndRecovery|TestSubmissionRealCrashAndOwner|TestSubmissionCommittedRecoveryIntegrity)$'",
+      "expect": [
+        "^--- PASS: TestSubmissionFailureCapacityAndRecovery \\(.*\\)$",
+        "^--- PASS: TestSubmissionRealCrashAndOwner \\(.*\\)$",
+        "^--- PASS: TestSubmissionCommittedRecoveryIntegrity \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "GSRELEASE",
+      "title": "TestSubmissionCloseAndRevocation",
+      "test": "go test -count=1 -v ./sdk/go/submission -run '^(TestSubmissionCloseAndRevocation)$'",
+      "expect": [
+        "^--- PASS: TestSubmissionCloseAndRevocation \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "GSALL",
+      "title": "All earlier stages plus gateway full Go/race/vet and node checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
       "expect": [
         "^--- PASS: TestBootstrap40RaceAndBarrier \\(.*\\)$",
@@ -398,7 +442,16 @@
         "^--- PASS: TestRetainedOwnerEncoding \\(.*\\)$",
         "^--- PASS: TestRecoveryEnvelopeSessionFence \\(.*\\)$",
         "^--- PASS: TestRecoveryAuthorityDeadlines \\(.*\\)$",
-        "^--- PASS: TestRecoveryErrorsAreOpaque \\(.*\\)$"
+        "^--- PASS: TestRecoveryErrorsAreOpaque \\(.*\\)$",
+        "^--- PASS: TestSubmissionIdentityAndEvaluation \\(.*\\)$",
+        "^--- PASS: TestSubmissionSemanticContextAndBounds \\(.*\\)$",
+        "^--- PASS: TestSubmissionConcurrentAndLookupCuts \\(.*\\)$",
+        "^--- PASS: TestSubmissionPendingAuthorityAndCancellation \\(.*\\)$",
+        "^--- PASS: TestSubmissionVersionedFacts \\(.*\\)$",
+        "^--- PASS: TestSubmissionFailureCapacityAndRecovery \\(.*\\)$",
+        "^--- PASS: TestSubmissionRealCrashAndOwner \\(.*\\)$",
+        "^--- PASS: TestSubmissionCommittedRecoveryIntegrity \\(.*\\)$",
+        "^--- PASS: TestSubmissionCloseAndRevocation \\(.*\\)$"
       ],
       "tier": "normal"
     }

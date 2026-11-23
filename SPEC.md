@@ -120,3 +120,10 @@ Binding approved contract/mapping: docs/rddd/RECOVERY-SPEC.md. Add compatible
 retained-position planning and owned recovery over the existing journal format,
 plus observer-bound opaque proofs, resume, explicit cannot-resume and certified
 replacement. Preserve all earlier APIs/tests; no transport, AUTH or new wire format.
+
+## Gateway Submit/Resolve
+
+Binding docs/rddd/SUBMIT-RESOLVE-SPEC.md incorporates approved choices: separate
+SQLite gateway event authority, permanent identity retention, registered codec,
+canonical UUIDv6 and actual trusted CORE evaluation. Legacy JetStream is outside
+this authority. No new stage number, production AUTH, transport or adapter.

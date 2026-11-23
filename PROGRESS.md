@@ -1,4 +1,7 @@
-# CORE/REV and Publication through Stage 3B completion
+# CORE/REV, publication/observation and gateway Submit/Resolve
+
+Current approved scope: SUBMIT-RESOLVE-SPEC.md. New submission package only.
+Previous source/APIs/tests/dependencies remain protected.
 
 Current: docs/rddd/RECOVERY-SPEC.md; implement only new retained/recovery files.
 Historical stages and private source/callback contracts remain protected.

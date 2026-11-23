@@ -1,6 +1,8 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
-Current overlay: Publication Stage 3B completion. Binding docs/rddd/RECOVERY-SPEC.md.
+Current overlay: gateway Submit/Resolve, docs/rddd/SUBMIT-RESOLVE-SPEC.md.
+Separate SQLite file, existing engine/durability; no JetStream bridge or adapter.
+Historical overlay: Publication Stage 3B completion. Binding docs/rddd/RECOVERY-SPEC.md.
 Evidence/current row counts: docs/rddd/RECOVERY-RESULTS.md. Minimum adapter boundary:
 docs/rddd/GO-GATEWAY-CONTRACT.md. OBSERVATION-3B-VECTOR-STATUS.md is the preserved
 historical design-review inventory, not the final execution report.
