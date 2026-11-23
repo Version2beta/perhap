@@ -92,3 +92,10 @@ Binding additional contract: docs/rddd/LEDGER-SPEC.md, subordinate to locally
 ratified INTEROP-PUBOBS/0.1 v0.1.0 commit 9a80977efaf2ff740a257f6e30314dac42ec384e
 and unchanged corrected draft.6 baseline. Only sdk/go/ledger implements this stage;
 no CORE/REV changes, network dispatcher or public observation service.
+
+## Part 4 — Publication Stage 2 local durable delivery
+
+Binding additional contract: docs/rddd/DELIVERY-SPEC.md. Preserve Stage 1 ledger
+format and semantics. Only sdk/go/delivery implements the additive durable sink,
+receiver-bound confirmation journal and bounded delivery passes. No broker binding,
+public observation, production AUTH, projection application or effects.

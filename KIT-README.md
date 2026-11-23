@@ -1,6 +1,9 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
-Current overlay: Publication Ledger Stage 1. Contract and source pin:
+Current overlay: Publication Stage 2 local durable delivery. Binding contract:
+docs/rddd/DELIVERY-SPEC.md; new IDs D2STORE/D2RUN/D2CRASH/D2ALL. No dependency
+changes. Confirmations and accepting sink are separate exclusive SQLite files.
+The Stage 1 ledger is protected unchanged. Earlier overlay contract and source pin:
 docs/rddd/LEDGER-SPEC.md; driver/durability/API: LEDGER-DESIGN.md. CGO and a C
 compiler required for pinned mattn/go-sqlite3 v1.14.32. New task IDs LGPSTATE,
 LGPDURABLE, LGPALL do not reuse earlier attempt counters. Preserve ignored logs.

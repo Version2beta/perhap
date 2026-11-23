@@ -1,4 +1,8 @@
-# CORE Stage 1, pure REV Stage 2 and Publication Ledger Stage 1
+# CORE/REV, Publication Ledger Stage 1 and durable Delivery Stage 2
+
+Delivery Stage 2 begins with verified stubs; see docs/rddd/DELIVERY-SPEC.md.
+Preserve prior ledger schema/behavior; sender confirmations use a separate store.
+Race frontier regression isolated in commit 30a3b3733e7e9716791d96816a0aa292c0c80a92.
 
 Ledger kit: approved INTEROP-PUBOBS/0.1 v0.1.0; SQLite driver/configuration,
 local API, trusted-host assumptions and failure tests documented and verified

@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/ledger",
-  "format_check": "test -z \"$(gofmt -l sdk/go/ledger)\"",
+  "format": "gofmt -w sdk/go/delivery",
+  "format_check": "test -z \"$(gofmt -l sdk/go/delivery)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -70,7 +70,10 @@
     "^sdk/go/rev/testdata/",
     "^sdk/go/rev/",
     "^sdk/go/ledger/contracts\\.go$",
-    "^sdk/go/ledger/testdata/"
+    "^sdk/go/ledger/testdata/",
+    "^sdk/go/ledger/",
+    "^sdk/go/delivery/contracts\\.go$",
+    "^sdk/go/delivery/testdata/"
   ],
   "tasks": [
     {
@@ -180,15 +183,49 @@
       "tier": "normal"
     },
     {
-      "id": "LGPALL",
-      "title": "Full tree, real storage crashes, race and checks",
+      "id": "D2STORE",
+      "title": "TestDeliveryDurableSink",
+      "test": "go test -count=1 -v ./sdk/go/delivery -run '^(TestDeliveryDurableSink)$'",
+      "expect": [
+        "^--- PASS: TestDeliveryDurableSink \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "D2RUN",
+      "title": "TestDeliveryOrderingAndUnknown, TestDeliveryBoundsAndIndependentKeys",
+      "test": "go test -count=1 -v ./sdk/go/delivery -run '^(TestDeliveryOrderingAndUnknown|TestDeliveryBoundsAndIndependentKeys)$'",
+      "expect": [
+        "^--- PASS: TestDeliveryOrderingAndUnknown \\(.*\\)$",
+        "^--- PASS: TestDeliveryBoundsAndIndependentKeys \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "D2CRASH",
+      "title": "TestDeliveryRealCrashRecovery",
+      "test": "go test -count=1 -v ./sdk/go/delivery -run '^(TestDeliveryRealCrashRecovery)$'",
+      "expect": [
+        "^--- PASS: TestDeliveryRealCrashRecovery \\(.*\\)$",
+        "    --- PASS: TestDeliveryRealCrashRecovery/receiver-before_commit \\(.*\\)$",
+        "    --- PASS: TestDeliveryRealCrashRecovery/receiver-after_commit \\(.*\\)$",
+        "    --- PASS: TestDeliveryRealCrashRecovery/sender-before_send \\(.*\\)$",
+        "    --- PASS: TestDeliveryRealCrashRecovery/sender-after_send \\(.*\\)$",
+        "    --- PASS: TestDeliveryRealCrashRecovery/ack-before_commit \\(.*\\)$",
+        "    --- PASS: TestDeliveryRealCrashRecovery/ack-after_commit \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "D2ALL",
+      "title": "Full tree, race, previous judge checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
       "expect": [
+        "^--- PASS: TestDeliveryDurableSink \\(.*\\)$",
+        "^--- PASS: TestDeliveryOrderingAndUnknown \\(.*\\)$",
+        "^--- PASS: TestDeliveryBoundsAndIndependentKeys \\(.*\\)$",
+        "^--- PASS: TestDeliveryRealCrashRecovery \\(.*\\)$",
         "^--- PASS: TestLedgerAcceptance \\(.*\\)$",
-        "^--- PASS: TestLedgerInitialAndAuthority \\(.*\\)$",
-        "^--- PASS: TestLedgerIndependentKeysAndStaleFailure \\(.*\\)$",
-        "^--- PASS: TestLedgerUnknownCapacityAndRecovery \\(.*\\)$",
-        "^--- PASS: TestLedgerSharedSchedules \\(.*\\)$",
         "^--- PASS: TestLedgerRealCrashAndOwners \\(.*\\)$",
         "^--- PASS: TestCOREFixtures \\(.*\\)$",
         "^--- PASS: TestREVFixtures \\(.*\\)$"
