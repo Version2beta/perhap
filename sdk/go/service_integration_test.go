@@ -283,7 +283,12 @@ func TestService_ReplayRestoresLastValidAndContinuesInvalidHistory(t *testing.T)
 	if hydration.Valid || string(hydration.Reduction) != `{"count":2}` {
 		t.Fatalf("invalid hydration: %+v", hydration)
 	}
-	sv := service.getOrCreateSupervisor("invalid")
+	// Keep this replay/repair test synchronous: direct processEvent calls must
+	// not race the run goroutine started by getOrCreateSupervisor.
+	sv, err := service.replaySupervisor("invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if sv.valid || sv.currentModel().Count != 2 {
 		t.Fatalf("invalid restored state: %+v", sv)
 	}
