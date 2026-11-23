@@ -85,3 +85,10 @@ The binding additional stage contract is docs/rddd/REV-SPEC.md, pinned to
 1a7269503a9ea0b3dbcd50f6b996caf9d3c96d87. This does not replace or change
 CORE's contract above. Historical replay never performs original-slot replacement.
 See docs/rddd/REV-TRACEABILITY.md for eight applicable and five deferred REV cases.
+
+## Part 3 — Publication Stage 1 ledger
+
+Binding additional contract: docs/rddd/LEDGER-SPEC.md, subordinate to locally
+ratified INTEROP-PUBOBS/0.1 v0.1.0 commit 9a80977efaf2ff740a257f6e30314dac42ec384e
+and unchanged corrected draft.6 baseline. Only sdk/go/ledger implements this stage;
+no CORE/REV changes, network dispatcher or public observation service.

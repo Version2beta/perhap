@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/rev",
-  "format_check": "test -z \"$(gofmt -l sdk/go/rev)\"",
+  "format": "gofmt -w sdk/go/ledger",
+  "format_check": "test -z \"$(gofmt -l sdk/go/ledger)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -67,7 +67,10 @@
     "^KIT-README\\.md$",
     "^sdk/go/core/",
     "^sdk/go/rev/contracts\\.go$",
-    "^sdk/go/rev/testdata/"
+    "^sdk/go/rev/testdata/",
+    "^sdk/go/rev/",
+    "^sdk/go/ledger/contracts\\.go$",
+    "^sdk/go/ledger/testdata/"
   ],
   "tasks": [
     {
@@ -155,14 +158,40 @@
       "tier": "normal"
     },
     {
-      "id": "R6ALL",
-      "title": "Whole tree including race and earlier CORE tests",
+      "id": "LGPSTATE",
+      "title": "TestLedgerAcceptance, TestLedgerInitialAndAuthority, TestLedgerIndependentKeysAndStaleFailure",
+      "test": "go test -count=1 -v ./sdk/go/ledger -run '^(TestLedgerAcceptance|TestLedgerInitialAndAuthority|TestLedgerIndependentKeysAndStaleFailure)$'",
+      "expect": [
+        "^--- PASS: TestLedgerAcceptance \\(.*\\)$",
+        "^--- PASS: TestLedgerInitialAndAuthority \\(.*\\)$",
+        "^--- PASS: TestLedgerIndependentKeysAndStaleFailure \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "LGPDURABLE",
+      "title": "TestLedgerUnknownCapacityAndRecovery, TestLedgerSharedSchedules, TestLedgerRealCrashAndOwners",
+      "test": "go test -count=1 -v ./sdk/go/ledger -run '^(TestLedgerUnknownCapacityAndRecovery|TestLedgerSharedSchedules|TestLedgerRealCrashAndOwners)$'",
+      "expect": [
+        "^--- PASS: TestLedgerUnknownCapacityAndRecovery \\(.*\\)$",
+        "^--- PASS: TestLedgerSharedSchedules \\(.*\\)$",
+        "^--- PASS: TestLedgerRealCrashAndOwners \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "LGPALL",
+      "title": "Full tree, real storage crashes, race and checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
       "expect": [
-        "^--- PASS: TestREVReconstruction \\(.*\\)$",
-        "^--- PASS: TestREVReconciliation \\(.*\\)$",
-        "^--- PASS: TestREVFixtures \\(.*\\)$",
-        "^--- PASS: TestCOREFixtures \\(.*\\)$"
+        "^--- PASS: TestLedgerAcceptance \\(.*\\)$",
+        "^--- PASS: TestLedgerInitialAndAuthority \\(.*\\)$",
+        "^--- PASS: TestLedgerIndependentKeysAndStaleFailure \\(.*\\)$",
+        "^--- PASS: TestLedgerUnknownCapacityAndRecovery \\(.*\\)$",
+        "^--- PASS: TestLedgerSharedSchedules \\(.*\\)$",
+        "^--- PASS: TestLedgerRealCrashAndOwners \\(.*\\)$",
+        "^--- PASS: TestCOREFixtures \\(.*\\)$",
+        "^--- PASS: TestREVFixtures \\(.*\\)$"
       ],
       "tier": "normal"
     }

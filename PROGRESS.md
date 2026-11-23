@@ -1,4 +1,8 @@
-# CORE Stage 1 and pure REV Stage 2
+# CORE Stage 1, pure REV Stage 2 and Publication Ledger Stage 1
+
+Ledger kit: approved INTEROP-PUBOBS/0.1 v0.1.0; SQLite driver/configuration,
+local API, trusted-host assumptions and failure tests documented and verified
+before coding loop. Begin from ledger stubs; keep all CORE/REV code unchanged.
 
 REV stage: corrected draft.6; history and current assertions remain distinct.
 See docs/rddd/REV-SPEC.md. No original-slot replacement or CORE production changes.

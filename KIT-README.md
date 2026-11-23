@@ -1,6 +1,10 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
-Current overlay: REV draft.6. Scope and verified source pin: docs/rddd/REV-SPEC.md.
+Current overlay: Publication Ledger Stage 1. Contract and source pin:
+docs/rddd/LEDGER-SPEC.md; driver/durability/API: LEDGER-DESIGN.md. CGO and a C
+compiler required for pinned mattn/go-sqlite3 v1.14.32. New task IDs LGPSTATE,
+LGPDURABLE, LGPALL do not reuse earlier attempt counters. Preserve ignored logs.
+Historical pure REV scope remains docs/rddd/REV-SPEC.md.
 Earlier CORE tasks remain in tasks.json, protected and unchanged. R6 tasks use
 new IDs; existing ignored .loop/ artifacts are retained. No reference code shipped.
 
