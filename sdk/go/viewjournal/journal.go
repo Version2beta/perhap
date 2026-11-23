@@ -609,8 +609,8 @@ func (j *Journal) stage(ctx context.Context, build func(*journalState) (*entry, 
 	if err != nil {
 		return false, storageError(err)
 	}
-	if st.bytes+len(body) > j.limits.MaxBytes {
-		return false, ErrCapacity
+	if err := reserveCleanup(st, e, len(body), j.limits.MaxBytes); err != nil {
+		return false, err
 	}
 	if err := st.apply(*e, len(body)); err != nil {
 		return false, fmt.Errorf("%w: %w", ErrUnavailable, err)

@@ -1,6 +1,8 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
-Current overlay: Publication Stage 3B1 finite authorized in-process sessions.
+Current overlay: Publication Stage 3B completion. Binding docs/rddd/RECOVERY-SPEC.md.
+Add retained planning/recoverable slots; unchanged SQLite format, dependencies and judge.
+Historical overlay: Publication Stage 3B1 finite authorized in-process sessions.
 Contract/map: docs/rddd/SESSION-SPEC.md. Bounded split: cursor/resume/resnapshot
 and trust/expiry persistence remain 3B2. No new dependencies or wire formats.
 Historical overlay: Publication Stage 3A private view journal. Binding contract:

@@ -112,4 +112,11 @@ cursor issuance, external disclosure, revocation or transport is implemented.
 Binding bounded slice: docs/rddd/SESSION-SPEC.md. New sdk/go/observation owns
 finite authorized bootstrap sessions, injected as-of certification and synchronous
 release/revocation fencing. Cursor issuance/verification, resume/resnapshot and
-restart/expiry policy are explicitly deferred to 3B2, not claimed by this kit.
+restart/expiry policy were explicitly deferred by the historical 3B1 kit.
+
+## Part 7 — Publication Stage 3B completion
+
+Binding approved contract/mapping: docs/rddd/RECOVERY-SPEC.md. Add compatible
+retained-position planning and owned recovery over the existing journal format,
+plus observer-bound opaque proofs, resume, explicit cannot-resume and certified
+replacement. Preserve all earlier APIs/tests; no transport, AUTH or new wire format.

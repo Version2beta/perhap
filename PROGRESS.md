@@ -1,4 +1,7 @@
-# CORE/REV, Publication Ledger/Delivery, View Journal and Session Stage 3B1
+# CORE/REV and Publication through Stage 3B completion
+
+Current: docs/rddd/RECOVERY-SPEC.md; implement only new retained/recovery files.
+Historical stages and private source/callback contracts remain protected.
 
 Stage 3B1 is the explicitly bounded finite bootstrap/release slice in SESSION-SPEC.
 Cursor/resume/resnapshot/expiry/restart identity policy are deferred to 3B2.
