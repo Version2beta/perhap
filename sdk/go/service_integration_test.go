@@ -73,6 +73,9 @@ func TestService_GetOrCreateSupervisorReplaysHistoryForRecreatedSupervisor(t *te
 	entityID := "cart-2"
 	first := testCounterEvent(t, entityID, "incremented", 1)
 	second := testCounterEvent(t, entityID, "incremented", 2)
+	// Replay frontiers use lexical order, not UUID generation order.
+	first.ID = "01f1e6e0-8ca9-6001-8000-000000000001"
+	second.ID = "01f1e6e0-8ca9-6002-8000-000000000002"
 	publishStoredEvent(t, nc, first)
 
 	supervisor := service.getOrCreateSupervisor(entityID)
