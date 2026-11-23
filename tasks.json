@@ -287,6 +287,17 @@
       "tier": "normal"
     },
     {
+      "id": "B1EDGES",
+      "title": "Cancellation owns cleanup and expired callback cannot certify",
+      "test": "go test -count=1 -v ./sdk/go/observation -run '^TestSessionCancellationEdges$'",
+      "expect": [
+        "^--- PASS: TestSessionCancellationEdges \\(.*\\)$",
+        "    --- PASS: TestSessionCancellationEdges/cancel-before-step \\(.*\\)$",
+        "    --- PASS: TestSessionCancellationEdges/expired-success-not-certified \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
       "id": "B1ALL",
       "title": "Full tree, race, vet and prior stage judge checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
@@ -301,7 +312,8 @@
         "^--- PASS: TestDeliveryRealCrashRecovery \\(.*\\)$",
         "^--- PASS: TestLedgerRealCrashAndOwners \\(.*\\)$",
         "^--- PASS: TestREVFixtures \\(.*\\)$",
-        "^--- PASS: TestCOREFixtures \\(.*\\)$"
+        "^--- PASS: TestCOREFixtures \\(.*\\)$",
+        "^--- PASS: TestSessionCancellationEdges \\(.*\\)$"
       ],
       "tier": "normal"
     }

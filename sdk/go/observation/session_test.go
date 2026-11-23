@@ -325,6 +325,53 @@ func TestInvalidScanAndDescriptor(t *testing.T) {
 		})
 	}
 }
+func TestSessionCancellationEdges(t *testing.T) {
+	t.Run("cancel-before-step", func(t *testing.T) {
+		j, h := journal(t, 10)
+		accept(t, j, h, 1)
+		a := &authority{}
+		l := limits
+		l.MaxSessions = 1
+		m := manager(t, j, NewGate(a, binding), l)
+		c, cancel := context.WithCancel(ctx)
+		calls := 0
+		s, err := m.Open(c, binding, func(context.Context, Frame) error { calls++; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		cancel()
+		if err = s.Step(); err == nil {
+			t.Fatal("canceled step succeeded")
+		}
+		plans, err := j.Plans(ctx)
+		if err != nil || len(plans) != 0 || calls != 0 {
+			t.Fatalf("canceled Step leaked pin/quota or disclosed: pins=%d calls=%d err=%v", len(plans), calls, err)
+		}
+		next, err := m.Open(ctx, binding, func(context.Context, Frame) error { return nil })
+		if err != nil {
+			t.Fatalf("canceled Step retained quota: %v", err)
+		}
+		next.Close()
+		s.Close()
+	})
+	t.Run("expired-success-not-certified", func(t *testing.T) {
+		j, h := journal(t, 10)
+		accept(t, j, h, 1)
+		a := &authority{}
+		l := limits
+		l.CallbackTimeout = time.Millisecond
+		m := manager(t, j, NewGate(a, binding), l)
+		s, err := m.Open(ctx, binding, func(c context.Context, _ Frame) error { <-c.Done(); return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		if err = s.Step(); !errors.Is(err, ErrUnknown) || a.certs != 0 {
+			t.Fatalf("expired callback produced success/barrier: %v certificates=%d", err, a.certs)
+		}
+	})
+}
+
 func TestSessionBoundsCancellationAndCleanup(t *testing.T) {
 	j, h := journal(t, 20)
 	accept(t, j, h, 1)

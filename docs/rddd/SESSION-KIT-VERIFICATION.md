@@ -53,3 +53,21 @@ callback cannot be forcibly bounded safely; no orphan timeout worker is introduc
 Authorized next command after local verified stub baseline/clean gate:
 MAX_ITER=12 MAX_ATTEMPTS=3 scripts/loop.sh
 Use unchanged pinned skill commands, new B1 task IDs. No push/merge/remote changes.
+
+## Corrective verification after initial judged implementation
+
+Initial kit 078da114b7083812fd57281df3eb4868265eb24b; first judged commit
+92eff687694c394618000ee492f3deca95ceabc6 passed original17 tasks. Final source
+review identified two untested contract edges. Added TestSessionCancellationEdges:
+cancel-before-step proved a retained pin/quota leak; expired-success-not-certified
+proved a nil return after callback deadline could wrongly certify a barrier.
+Both failed against that actual judged implementation, not merely a mock.
+
+New exact B1EDGES judge fails the incomplete implementation, B1ALL fails too; all
+other16 focused tasks pass. The independently written original private reference
+already handles both cases and passes ALL EIGHTEEN judge tasks with new regressions,
+including full Go/race/vet/prior checks. Restored judged implementation unchanged
+before committing this test/spec/task overlay; private reference remains outside kit.
+No tests weakened, no prior-stage changes. Corrective bounded loop uses new B1EDGES
+ID and unchanged configured commands. Initial one coding iteration plus this bounded
+repair remains within the requested 12-iteration total budget if completed normally.

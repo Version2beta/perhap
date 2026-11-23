@@ -116,7 +116,10 @@ Close completes. Calls on retired sessions return ErrClosed. No work is resumed 
 failed Step: it cancels/retires and attempts cleanup. Successful Close idempotent.
 Failed cleanup remains retryable/owned and keeps quota reserved; a later Close retries.
 Join stable ErrCleanup with the primary failure without exposing private errors.
-No silent pin leak or release of quota before cleanup succeeds. Cleanup after unknown
+No silent pin leak or release of quota before cleanup succeeds. A parent context
+canceled BEFORE Step is still a failed step requiring retirement/cleanup, not an
+early return that abandons its pin. A recipient returning nil after its callback
+context expires still has uncertain release completion; no barrier may follow. Cleanup after unknown
 storage outcome may require independent owner recovery; no exactly-once cleanup claim.
 
 ## Executable coverage and explicit deferrals
