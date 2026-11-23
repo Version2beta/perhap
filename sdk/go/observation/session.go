@@ -51,7 +51,8 @@ func (g *Gate) Release(ctx context.Context, binding Binding, frame Frame, recipi
 		return err
 	}
 	// The recipient may have disclosed before returning an error or expiry.
-	if err := recipient(ctx, frame); err != nil {
+	// An expired context makes completion uncertain even if the recipient returned nil.
+	if err := recipient(ctx, frame); err != nil || ctx.Err() != nil {
 		return ErrUnknown
 	}
 	return nil
@@ -160,7 +161,9 @@ type Session struct {
 func (s *Session) Step() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.retired || s.ctx.Err() != nil {
+	// A parent canceled before Step is a failed step (retired and cleaned up below),
+	// not an early return that would abandon the durable pin.
+	if s.retired {
 		return ErrClosed
 	}
 	err := s.step()
@@ -236,6 +239,9 @@ func (s *Session) certify() (Certificate, error) {
 	cert, err := s.m.gate.authority.Certify(ctx, s.binding, s.last.Revision, evidence)
 	if err != nil {
 		return Certificate{}, mapAuthority(err)
+	}
+	if err := ctx.Err(); err != nil {
+		return Certificate{}, err
 	}
 	if cert.Binding != s.binding || cert.Through != s.last.Revision || cert.Evidence != evidence || cert.Seal == "" {
 		return Certificate{}, ErrDenied
