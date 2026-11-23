@@ -1,6 +1,10 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
-Current overlay: Publication Stage 2 local durable delivery. Binding contract:
+Current overlay: Publication Stage 3A private view journal. Binding contract:
+docs/rddd/VIEWJOURNAL-SPEC.md. No new dependency; existing SQLite CGO toolchain.
+New P3ACUT/P3ASTATE/P3ARECOVER/P3AALL tasks retain prior stages as regressions.
+No external observations/cursors/sessions or runtime authority are implemented.
+Historical overlay: Publication Stage 2 local durable delivery. Binding contract:
 docs/rddd/DELIVERY-SPEC.md; new IDs D2STORE/D2RUN/D2CRASH/D2ALL. No dependency
 changes. Confirmations and accepting sink are separate exclusive SQLite files.
 The Stage 1 ledger is protected unchanged. Earlier overlay contract and source pin:

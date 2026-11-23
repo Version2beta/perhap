@@ -99,3 +99,10 @@ Binding additional contract: docs/rddd/DELIVERY-SPEC.md. Preserve Stage 1 ledger
 format and semantics. Only sdk/go/delivery implements the additive durable sink,
 receiver-bound confirmation journal and bounded delivery passes. No broker binding,
 public observation, production AUTH, projection application or effects.
+
+## Part 5 — Publication Stage 3A private view journal
+
+Binding additional contract and requirements map: docs/rddd/VIEWJOURNAL-SPEC.md.
+Only sdk/go/viewjournal implements independent projection/view revisions and durable
+snapshot/tail plans. Preserve all prior code/storage formats. No Stage 3B sessions,
+cursor issuance, external disclosure, revocation or transport is implemented.

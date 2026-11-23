@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/delivery",
-  "format_check": "test -z \"$(gofmt -l sdk/go/delivery)\"",
+  "format": "gofmt -w sdk/go/viewjournal",
+  "format_check": "test -z \"$(gofmt -l sdk/go/viewjournal)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -73,7 +73,10 @@
     "^sdk/go/ledger/testdata/",
     "^sdk/go/ledger/",
     "^sdk/go/delivery/contracts\\.go$",
-    "^sdk/go/delivery/testdata/"
+    "^sdk/go/delivery/testdata/",
+    "^sdk/go/delivery/",
+    "^sdk/go/viewjournal/contracts\\.go$",
+    "^sdk/go/viewjournal/testdata/"
   ],
   "tasks": [
     {
@@ -217,18 +220,56 @@
       "tier": "normal"
     },
     {
-      "id": "D2ALL",
-      "title": "Full tree, race, previous judge checks",
+      "id": "P3ACUT",
+      "title": "TestViewSnapshot40Tail41",
+      "test": "go test -count=1 -v ./sdk/go/viewjournal -run '^(TestViewSnapshot40Tail41)$'",
+      "expect": [
+        "^--- PASS: TestViewSnapshot40Tail41 \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "P3ASTATE",
+      "title": "TestViewEqualityFreshnessAndIdentity, TestViewPublicMetadataEquality",
+      "test": "go test -count=1 -v ./sdk/go/viewjournal -run '^(TestViewEqualityFreshnessAndIdentity|TestViewPublicMetadataEquality)$'",
+      "expect": [
+        "^--- PASS: TestViewEqualityFreshnessAndIdentity \\(.*\\)$",
+        "^--- PASS: TestViewPublicMetadataEquality \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "P3ARECOVER",
+      "title": "TestViewNullBatchesAndInterruptedScan, TestViewUnknownCorruptAndOwnership, TestViewPlanCrashRecovery, TestViewRealCrashRecovery",
+      "test": "go test -count=1 -v ./sdk/go/viewjournal -run '^(TestViewNullBatchesAndInterruptedScan|TestViewUnknownCorruptAndOwnership|TestViewPlanCrashRecovery|TestViewRealCrashRecovery)$'",
+      "expect": [
+        "^--- PASS: TestViewNullBatchesAndInterruptedScan \\(.*\\)$",
+        "^--- PASS: TestViewUnknownCorruptAndOwnership \\(.*\\)$",
+        "^--- PASS: TestViewPlanCrashRecovery \\(.*\\)$",
+        "^--- PASS: TestViewRealCrashRecovery \\(.*\\)$",
+        "    --- PASS: TestViewPlanCrashRecovery/plan-before_commit \\(.*\\)$",
+        "    --- PASS: TestViewPlanCrashRecovery/plan-after_commit \\(.*\\)$",
+        "    --- PASS: TestViewRealCrashRecovery/before_commit \\(.*\\)$",
+        "    --- PASS: TestViewRealCrashRecovery/after_commit \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "P3AALL",
+      "title": "Full tree including real view-journal recovery/race/vet and prior checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
       "expect": [
-        "^--- PASS: TestDeliveryDurableSink \\(.*\\)$",
-        "^--- PASS: TestDeliveryOrderingAndUnknown \\(.*\\)$",
-        "^--- PASS: TestDeliveryBoundsAndIndependentKeys \\(.*\\)$",
+        "^--- PASS: TestViewSnapshot40Tail41 \\(.*\\)$",
+        "^--- PASS: TestViewEqualityFreshnessAndIdentity \\(.*\\)$",
+        "^--- PASS: TestViewPublicMetadataEquality \\(.*\\)$",
+        "^--- PASS: TestViewNullBatchesAndInterruptedScan \\(.*\\)$",
+        "^--- PASS: TestViewUnknownCorruptAndOwnership \\(.*\\)$",
+        "^--- PASS: TestViewPlanCrashRecovery \\(.*\\)$",
+        "^--- PASS: TestViewRealCrashRecovery \\(.*\\)$",
         "^--- PASS: TestDeliveryRealCrashRecovery \\(.*\\)$",
-        "^--- PASS: TestLedgerAcceptance \\(.*\\)$",
         "^--- PASS: TestLedgerRealCrashAndOwners \\(.*\\)$",
-        "^--- PASS: TestCOREFixtures \\(.*\\)$",
-        "^--- PASS: TestREVFixtures \\(.*\\)$"
+        "^--- PASS: TestREVFixtures \\(.*\\)$",
+        "^--- PASS: TestCOREFixtures \\(.*\\)$"
       ],
       "tier": "normal"
     }

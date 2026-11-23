@@ -1,4 +1,8 @@
-# CORE/REV, Publication Ledger Stage 1 and durable Delivery Stage 2
+# CORE/REV, Publication Ledger/Delivery and private View Journal Stage 3A
+
+Stage 3A kit: docs/rddd/VIEWJOURNAL-SPEC.md; independent per-view revisions,
+host-verified rendering/cut and durable private snapshot plans. Begin from stubs;
+previous stages and four observation planning documents are preserved.
 
 Delivery Stage 2 begins with verified stubs; see docs/rddd/DELIVERY-SPEC.md.
 Preserve prior ledger schema/behavior; sender confirmations use a separate store.
