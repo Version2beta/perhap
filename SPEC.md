@@ -78,3 +78,10 @@ This is a bounded CORE implementation slice, not certified complete rDDD.
 Full randomized graph coverage, durable runtime and other capabilities remain
 outside this kit. The protected tests are evidence, not replacements for
 upstream semantics. Implement generally; never special-case fixture names.
+
+## Part 2 — Pure REV Stage 2 (draft.6)
+
+The binding additional stage contract is docs/rddd/REV-SPEC.md, pinned to
+1a7269503a9ea0b3dbcd50f6b996caf9d3c96d87. This does not replace or change
+CORE's contract above. Historical replay never performs original-slot replacement.
+See docs/rddd/REV-TRACEABILITY.md for eight applicable and five deferred REV cases.

@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/core",
-  "format_check": "test -z \"$(gofmt -l sdk/go/core)\"",
+  "format": "gofmt -w sdk/go/rev",
+  "format_check": "test -z \"$(gofmt -l sdk/go/rev)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -64,7 +64,10 @@
     "_test\\.go$",
     "^sdk/go/core/testdata/",
     "^scripts/",
-    "^KIT-README\\.md$"
+    "^KIT-README\\.md$",
+    "^sdk/go/core/",
+    "^sdk/go/rev/contracts\\.go$",
+    "^sdk/go/rev/testdata/"
   ],
   "tasks": [
     {
@@ -117,13 +120,48 @@
       "tier": "normal"
     },
     {
-      "id": "T3",
-      "title": "Whole tree: checked, every test green",
-      "test": "go test -count=1 -v ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
+      "id": "R6VIEW",
+      "title": "TestREVReconstruction",
+      "test": "go test -count=1 -v ./sdk/go/rev -run '^TestREVReconstruction$'",
       "expect": [
-        "^--- PASS: TestCOREBehavior \\(.*\\)$",
-        "^--- PASS: TestCOREOwnership \\(.*\\)$",
-        "^--- PASS: TestCOREPermutations \\(.*\\)$",
+        "^--- PASS: TestREVReconstruction \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "R6PLAN",
+      "title": "TestREVReconciliation",
+      "test": "go test -count=1 -v ./sdk/go/rev -run '^TestREVReconciliation$'",
+      "expect": [
+        "^--- PASS: TestREVReconciliation \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "R6FIX",
+      "title": "TestREVFixtures",
+      "test": "go test -count=1 -v ./sdk/go/rev -run '^TestREVFixtures$'",
+      "expect": [
+        "^--- PASS: TestREVFixtures \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-upsert-change \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-unchanged-recomputation \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-retraction \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-missing-number \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-later-upsert-not-retroactive-event-replacement \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-retraction-does-not-undo-historical-transitions \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-failed-recompute-is-unresolved-not-retraction \\(.*\\)$",
+        "    --- PASS: TestREVFixtures/rev-recovered-same-value-clears-unresolved \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "R6ALL",
+      "title": "Whole tree including race and earlier CORE tests",
+      "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
+      "expect": [
+        "^--- PASS: TestREVReconstruction \\(.*\\)$",
+        "^--- PASS: TestREVReconciliation \\(.*\\)$",
+        "^--- PASS: TestREVFixtures \\(.*\\)$",
         "^--- PASS: TestCOREFixtures \\(.*\\)$"
       ],
       "tier": "normal"

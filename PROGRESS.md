@@ -1,4 +1,7 @@
-# CORE Stage 1
+# CORE Stage 1 and pure REV Stage 2
+
+REV stage: corrected draft.6; history and current assertions remain distinct.
+See docs/rddd/REV-SPEC.md. No original-slot replacement or CORE production changes.
 
 Verified kit baseline; implementation begins from stubs. See SPEC.md.
 T1: Implemented pure finite-history Evaluate (sdk/go/core/evaluate.go); TestCOREBehavior, TestCOREOwnership, TestCOREPermutations pass.

@@ -1,4 +1,8 @@
-# CORE Stage 1 kit
+# CORE Stage 1 / pure REV Stage 2 kit
+
+Current overlay: REV draft.6. Scope and verified source pin: docs/rddd/REV-SPEC.md.
+Earlier CORE tasks remain in tasks.json, protected and unchanged. R6 tasks use
+new IDs; existing ignored .loop/ artifacts are retained. No reference code shipped.
 
 Already applied on rddd-foundation; preserve existing repository files.
 Prerequisites: Go per go.mod, Node/npm, jq, bash, timeout or gtimeout, configured Pi.

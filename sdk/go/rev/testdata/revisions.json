@@ -1,0 +1,406 @@
+{
+  "spec_revision": "0.1.0-draft.6",
+  "suite": "REV/0.1",
+  "semantics": "Derived conclusions have stable producer/key and ordered durable revisions. All admitted publications remain immutable events at their canonical historical positions; no implicit original-slot replacement or retraction of historical transitions. A separate current-assertion view selects the latest contiguous verified revision. Failed/incomplete recomputation becomes unresolved, not retraction.",
+  "cases": [
+    {
+      "id": "rev-upsert-change",
+      "publications": [
+        {
+          "event_id": "p1",
+          "producer": "fulfillment",
+          "key": "shipment-1/delivery",
+          "revision": 1,
+          "op": "upsert",
+          "value": {
+            "delivered": true
+          }
+        },
+        {
+          "event_id": "p2",
+          "producer": "fulfillment",
+          "key": "shipment-1/delivery",
+          "revision": 2,
+          "op": "upsert",
+          "value": {
+            "delivered": false
+          },
+          "supersedes": "p1"
+        }
+      ],
+      "expected": {
+        "history_event_ids": [
+          "p1",
+          "p2"
+        ],
+        "effective": {
+          "shipment-1/delivery": {
+            "delivered": false
+          }
+        },
+        "completeness": "complete_as_of_frontier"
+      }
+    },
+    {
+      "id": "rev-unchanged-recomputation",
+      "previous": {
+        "event_id": "p1",
+        "producer": "fulfillment",
+        "key": "shipment-1/delivery",
+        "revision": 1,
+        "op": "upsert",
+        "value": {
+          "delivered": true
+        }
+      },
+      "recomputed": {
+        "key": "shipment-1/delivery",
+        "value": {
+          "delivered": true
+        }
+      },
+      "expected": {
+        "new_publications": 0
+      }
+    },
+    {
+      "id": "rev-retraction",
+      "publications": [
+        {
+          "event_id": "p1",
+          "producer": "fulfillment",
+          "key": "shipment-1/delivery",
+          "revision": 1,
+          "op": "upsert",
+          "value": {
+            "delivered": true
+          }
+        },
+        {
+          "event_id": "p2",
+          "producer": "fulfillment",
+          "key": "shipment-1/delivery",
+          "revision": 2,
+          "op": "retract",
+          "supersedes": "p1"
+        }
+      ],
+      "expected": {
+        "history_event_ids": [
+          "p1",
+          "p2"
+        ],
+        "effective": {},
+        "completeness": "complete_as_of_frontier"
+      }
+    },
+    {
+      "id": "rev-missing-number",
+      "publications": [
+        {
+          "event_id": "p2",
+          "producer": "fulfillment",
+          "key": "shipment-1/delivery",
+          "revision": 2,
+          "op": "upsert",
+          "value": {
+            "delivered": false
+          }
+        }
+      ],
+      "expected": {
+        "completeness": "incomplete",
+        "may_treat_value_as_authoritative": false
+      }
+    },
+    {
+      "id": "rev-equal-event-frontier-updated-projection",
+      "previous": {
+        "max_input_id": "z",
+        "projection_revision": 8,
+        "value": "confirmed"
+      },
+      "corrected": {
+        "max_input_id": "z",
+        "projection_revision": 9,
+        "value": "disputed"
+      },
+      "expected": {
+        "client_must_accept_new_revision": true
+      }
+    },
+    {
+      "id": "rev-agent-judgment-not-recomputed",
+      "history": [
+        {
+          "event_id": "a1",
+          "participant": "agent-7",
+          "type": "recommend_investigation",
+          "conclusion": "investigate"
+        }
+      ],
+      "replay": true,
+      "expected": {
+        "rerun_agent": false,
+        "historical_event_ids": [
+          "a1"
+        ]
+      }
+    },
+    {
+      "id": "rev-provisional-authorized-publication",
+      "publication": {
+        "event_id": "p1",
+        "producer": "fulfillment",
+        "key": "shipment-1/delivery",
+        "revision": 1,
+        "op": "upsert",
+        "status": "provisional",
+        "value": {
+          "delivered": true
+        }
+      },
+      "authority": {
+        "assert": true,
+        "disclose_to_subscriber": true
+      },
+      "stability_proof": null,
+      "expected": {
+        "publication": "allowed",
+        "requires_monotonic_finality_or_risk_proof": false,
+        "downstream_effect_authorized": false
+      }
+    },
+    {
+      "id": "rev-provisional-disclosure-denied",
+      "publication": {
+        "event_id": "p1",
+        "producer": "fulfillment",
+        "key": "shipment-1/delivery",
+        "revision": 1,
+        "op": "upsert",
+        "status": "provisional",
+        "value": {
+          "delivered": true
+        }
+      },
+      "authority": {
+        "assert": true,
+        "disclose_to_subscriber": false
+      },
+      "expected": {
+        "publication_to_subscriber": "denied",
+        "metadata_visible": false
+      }
+    },
+    {
+      "id": "rev-constitutive-publication-is-effect",
+      "publication": {
+        "event_id": "p1",
+        "type": "binding_acceptance",
+        "domain_semantics": "legally_effective_on_issuance",
+        "authority": {
+          "assert": true,
+          "disclose_to_subscriber": true
+        },
+        "commitment": null
+      },
+      "expected": {
+        "publication": "blocked_pending_effect_commitment",
+        "requires_effect_justification": true
+      }
+    },
+    {
+      "id": "rev-later-upsert-not-retroactive-event-replacement",
+      "publications": [
+        {
+          "event_id": "b",
+          "producer": "upstream",
+          "key": "counter/value",
+          "revision": 1,
+          "op": "upsert",
+          "event_type": "set",
+          "value": 2
+        },
+        {
+          "event_id": "z",
+          "producer": "upstream",
+          "key": "counter/value",
+          "revision": 2,
+          "op": "upsert",
+          "event_type": "set",
+          "value": 7,
+          "supersedes": "b",
+          "cause_event_id": "c",
+          "requires_success": true
+        }
+      ],
+      "ordinary_events": [
+        {
+          "event_id": "c",
+          "type": "add",
+          "value": 5,
+          "cause_publication": "b"
+        }
+      ],
+      "initial": {
+        "n": 0
+      },
+      "expected": {
+        "history_event_ids": [
+          "b",
+          "c",
+          "z"
+        ],
+        "interpreted_event_ids": [
+          "b",
+          "c",
+          "z"
+        ],
+        "interpreted_operations": [
+          {
+            "type": "set",
+            "value": 2
+          },
+          {
+            "type": "add",
+            "value": 5
+          },
+          {
+            "type": "set",
+            "value": 7
+          }
+        ],
+        "working": {
+          "n": 7
+        },
+        "current_assertions": {
+          "counter/value": 7
+        },
+        "historical_cause_remains": "b",
+        "correction_cause_remains": "c",
+        "completeness": "complete_as_of_frontier"
+      }
+    },
+    {
+      "id": "rev-retraction-does-not-undo-historical-transitions",
+      "publications": [
+        {
+          "event_id": "b",
+          "producer": "upstream",
+          "key": "counter/value",
+          "revision": 1,
+          "op": "upsert",
+          "event_type": "set",
+          "value": 2
+        },
+        {
+          "event_id": "z",
+          "producer": "upstream",
+          "key": "counter/value",
+          "revision": 2,
+          "op": "retract",
+          "supersedes": "b"
+        }
+      ],
+      "ordinary_events": [
+        {
+          "event_id": "c",
+          "type": "add",
+          "value": 5,
+          "cause_publication": "b"
+        }
+      ],
+      "initial": {
+        "n": 0
+      },
+      "expected": {
+        "history_event_ids": [
+          "b",
+          "c",
+          "z"
+        ],
+        "interpreted_event_ids": [
+          "b",
+          "c",
+          "z"
+        ],
+        "interpreted_operations": [
+          {
+            "type": "set",
+            "value": 2
+          },
+          {
+            "type": "add",
+            "value": 5
+          }
+        ],
+        "working": {
+          "n": 7
+        },
+        "current_assertions": {},
+        "historical_cause_remains": "b",
+        "completeness": "complete_as_of_frontier"
+      }
+    },
+    {
+      "id": "rev-failed-recompute-is-unresolved-not-retraction",
+      "previous": {
+        "event_id": "b",
+        "producer": "upstream",
+        "key": "counter/value",
+        "revision": 1,
+        "op": "upsert",
+        "value": {
+          "delivered": true
+        }
+      },
+      "recomputed": {
+        "completeness": "incomplete",
+        "evaluation": "failed",
+        "proposals": []
+      },
+      "expected": {
+        "next_status": "unresolved",
+        "last_known_value": {
+          "delivered": true
+        },
+        "last_known_value_is_authoritative": false,
+        "retraction": false,
+        "new_effect_authorized": false
+      }
+    },
+    {
+      "id": "rev-recovered-same-value-clears-unresolved",
+      "previous": {
+        "event_id": "b",
+        "producer": "upstream",
+        "key": "counter/value",
+        "revision": 1,
+        "op": "upsert",
+        "value": {
+          "delivered": true
+        }
+      },
+      "status_revision": {
+        "revision": 2,
+        "status": "unresolved"
+      },
+      "recomputed": {
+        "completeness": "complete_as_of_frontier",
+        "evaluation": "valid",
+        "value": {
+          "delivered": true
+        }
+      },
+      "expected": {
+        "next_status": "current",
+        "content_unchanged": true,
+        "requires_status_revision": true,
+        "effective_value": {
+          "delivered": true
+        }
+      }
+    }
+  ]
+}
