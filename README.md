@@ -1,5 +1,8 @@
 # Perhap
 
+Pure rDDD CORE Stage 1 development kit: [KIT-README.md](KIT-README.md).
+This does not change or certify the existing NATS runtime.
+
 An event-sourced, reducer-based framework for full-stack reactive applications.
 
 Events are the primary data. State is a derived view. The same event language spans browser to backend to any downstream service, with NATS at the center.

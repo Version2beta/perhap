@@ -1,0 +1,1179 @@
+{
+  "spec_revision": "0.1.0-draft.5",
+  "suite": "CORE/0.1",
+  "semantics": "See CONFORMANCE.md; already admitted, duplicate/conflict tests use phase=admission",
+  "cases": [
+    {
+      "id": "core-empty",
+      "events": [],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [],
+        "blocked": [],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-independent-id-tiebreak",
+      "events": [
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 5
+          },
+          "asserted_by": "verified:test-principal"
+        },
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": 2
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a",
+          "b"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 7
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-cause-overrides-id",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 4
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "z",
+            "scope": "local"
+          }
+        },
+        {
+          "id": "z",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": 3
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "z",
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 7
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-missing-local-independent",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 4
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "z",
+            "scope": "local"
+          }
+        },
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": 10
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": false
+      },
+      "expected": {
+        "attempted": [
+          "b"
+        ],
+        "blocked": [
+          "a"
+        ],
+        "working": {
+          "n": 10
+        },
+        "evaluation": "valid",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "dependency_unresolved"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-causal-cycle",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 1
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "b",
+            "scope": "local"
+          }
+        },
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 2
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "a",
+            "scope": "local"
+          }
+        },
+        {
+          "id": "c",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": 5
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": false
+      },
+      "expected": {
+        "attempted": [
+          "c"
+        ],
+        "blocked": [
+          "a",
+          "b"
+        ],
+        "working": {
+          "n": 5
+        },
+        "evaluation": "valid",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "causal_cycle"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-failed-parent-occurrence-dependency",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 2
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "z",
+            "scope": "local"
+          }
+        },
+        {
+          "id": "z",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "fail",
+          "data": {},
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "z",
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 2
+        },
+        "evaluation": "failed",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "reducer_failed"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-failed-parent-success-dependency",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 2
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "z",
+            "scope": "local"
+          },
+          "requires_success": true
+        },
+        {
+          "id": "z",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "fail",
+          "data": {},
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": false
+      },
+      "expected": {
+        "attempted": [
+          "z"
+        ],
+        "blocked": [
+          "a"
+        ],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "failed",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "reducer_failed",
+          "dependency_unresolved"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-validation-repaired",
+      "events": [
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 5
+          },
+          "asserted_by": "verified:test-principal"
+        },
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": -2
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a",
+          "b"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 3
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "domain_invalid"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-trace-only-external-cause",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 3
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "outside-1",
+            "scope": "external"
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 3
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-unknown-cause-classification",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 3
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "outside-1",
+            "scope": "unknown"
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": false
+      },
+      "expected": {
+        "attempted": [],
+        "blocked": [
+          "a"
+        ],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "dependency_unresolved"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-invalid-state-pure-proposal",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": -1
+          },
+          "asserted_by": "verified:test-principal"
+        },
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "propose",
+          "data": {
+            "action_key": "notify/1"
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a",
+          "b"
+        ],
+        "blocked": [],
+        "working": {
+          "n": -1
+        },
+        "evaluation": "invalid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "domain_invalid"
+        ],
+        "proposals": [
+          {
+            "action_key": "notify/1",
+            "commit_eligible": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "core-late-event-replay",
+      "phase": "replay",
+      "before": {
+        "events": [
+          {
+            "id": "c",
+            "context": "demo",
+            "scope": "counter-1",
+            "type": "add",
+            "data": {
+              "n": 2
+            },
+            "asserted_by": "verified:test-principal"
+          },
+          {
+            "id": "a",
+            "context": "demo",
+            "scope": "counter-1",
+            "type": "set",
+            "data": {
+              "n": 1
+            },
+            "asserted_by": "verified:test-principal"
+          }
+        ],
+        "expected": {
+          "attempted": [
+            "a",
+            "c"
+          ],
+          "working": {
+            "n": 3
+          }
+        },
+        "frontier": {
+          "continuous": true
+        }
+      },
+      "late": {
+        "id": "b",
+        "context": "demo",
+        "scope": "counter-1",
+        "type": "set",
+        "data": {
+          "n": 10
+        },
+        "asserted_by": "verified:test-principal"
+      },
+      "after": {
+        "expected": {
+          "attempted": [
+            "a",
+            "b",
+            "c"
+          ],
+          "working": {
+            "n": 12
+          }
+        },
+        "frontier": {
+          "continuous": true
+        }
+      }
+    },
+    {
+      "id": "core-admission-identical-retry",
+      "phase": "admission",
+      "submissions": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 1
+          },
+          "asserted_by": "verified:test-principal"
+        },
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 1
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "expected": {
+        "admitted_ids": [
+          "a"
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "core-admission-conflicting-id",
+      "phase": "admission",
+      "submissions": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 1
+          },
+          "asserted_by": "verified:test-principal"
+        },
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 2
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "expected": {
+        "admitted_ids": [
+          "a"
+        ],
+        "admitted_content": {
+          "n": 1
+        },
+        "diagnostics": [
+          "conflicting_id"
+        ]
+      }
+    },
+    {
+      "id": "core-invalid-candidate-retained",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "set",
+          "data": {
+            "n": -2
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": -2
+        },
+        "working_available": true,
+        "last_valid": {
+          "n": 0
+        },
+        "last_valid_available": true,
+        "evaluation": "invalid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "domain_invalid"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-invalid-initial-repair",
+      "initialization": {
+        "state": {
+          "n": -2
+        }
+      },
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "add",
+          "data": {
+            "n": 5
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 3
+        },
+        "working_available": true,
+        "last_valid": {
+          "n": 3
+        },
+        "last_valid_available": true,
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "initial_domain_invalid"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-invalid-initial-no-repair",
+      "initialization": {
+        "state": {
+          "n": -2
+        }
+      },
+      "events": [],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [],
+        "blocked": [],
+        "working": {
+          "n": -2
+        },
+        "working_available": true,
+        "last_valid_available": false,
+        "evaluation": "invalid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "initial_domain_invalid"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-initializer-failed",
+      "initialization": {
+        "failure": "initializer_failed"
+      },
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "add",
+          "data": {
+            "n": 5
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [],
+        "blocked": [
+          "a"
+        ],
+        "working_available": false,
+        "last_valid_available": false,
+        "evaluation": "failed",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "initializer_failed"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-initial-validator-failed",
+      "initialization": {
+        "state": {
+          "n": 0
+        },
+        "validation_failure": "validator_failed"
+      },
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "add",
+          "data": {
+            "n": 5
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [],
+        "blocked": [
+          "a"
+        ],
+        "working": {
+          "n": 0
+        },
+        "working_available": true,
+        "last_valid_available": false,
+        "evaluation": "failed",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [
+          "initial_validator_failed"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-proposal-final-selection",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "set",
+          "data": {
+            "n": 2
+          }
+        },
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "propose_if_positive",
+          "data": {
+            "action_key": "ship/1"
+          }
+        },
+        {
+          "id": "c",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "set",
+          "data": {
+            "n": 0
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a",
+          "b",
+          "c"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-proposal-final-selection-supported",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "set",
+          "data": {
+            "n": 2
+          }
+        },
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "propose_if_positive",
+          "data": {
+            "action_key": "ship/1"
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a",
+          "b"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 2
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": [
+          {
+            "action_key": "ship/1",
+            "commit_eligible": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "core-proposal-explicit-cancel",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "propose",
+          "data": {
+            "action_key": "notify/1"
+          }
+        },
+        {
+          "id": "b",
+          "context": "demo",
+          "scope": "counter-1",
+          "asserted_by": "verified:test-principal",
+          "type": "cancel_proposal",
+          "data": {
+            "action_key": "notify/1"
+          }
+        }
+      ],
+      "frontier": {
+        "continuous": true
+      },
+      "expected": {
+        "attempted": [
+          "a",
+          "b"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "complete_as_of_frontier",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-blocked-proposal-late-parent",
+      "phase": "replay",
+      "before": {
+        "events": [
+          {
+            "id": "b",
+            "context": "demo",
+            "scope": "counter-1",
+            "asserted_by": "verified:test-principal",
+            "type": "propose",
+            "data": {
+              "action_key": "notify/late"
+            },
+            "cause": {
+              "id": "z",
+              "scope": "local"
+            }
+          }
+        ],
+        "expected": {
+          "attempted": [],
+          "blocked": [
+            "b"
+          ],
+          "working": {
+            "n": 0
+          },
+          "evaluation": "valid",
+          "completeness": "incomplete",
+          "diagnostics": [
+            "dependency_unresolved"
+          ],
+          "proposals": []
+        },
+        "frontier": {
+          "continuous": true
+        }
+      },
+      "late": {
+        "id": "z",
+        "context": "demo",
+        "scope": "counter-1",
+        "asserted_by": "verified:test-principal",
+        "type": "noop",
+        "data": {}
+      },
+      "after": {
+        "expected": {
+          "attempted": [
+            "z",
+            "b"
+          ],
+          "blocked": [],
+          "working": {
+            "n": 0
+          },
+          "evaluation": "valid",
+          "completeness": "complete_as_of_frontier",
+          "diagnostics": [],
+          "proposals": [
+            {
+              "action_key": "notify/late",
+              "commit_eligible": false
+            }
+          ]
+        },
+        "frontier": {
+          "continuous": true
+        }
+      }
+    },
+    {
+      "id": "core-no-frontier-empty-not-complete",
+      "events": [],
+      "expected": {
+        "attempted": [],
+        "blocked": [],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "unavailable",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-no-frontier-with-apparent-valid-model",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "set",
+          "data": {
+            "n": 7
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "expected": {
+        "attempted": [
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 7
+        },
+        "evaluation": "valid",
+        "completeness": "unavailable",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-explicit-uncertified-frontier-not-a-known-gap",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 3
+          },
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": false
+      },
+      "expected": {
+        "attempted": [
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 3
+        },
+        "evaluation": "valid",
+        "completeness": "unavailable",
+        "diagnostics": [],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-known-required-parent-missing-without-frontier",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "add",
+          "data": {
+            "n": 3
+          },
+          "asserted_by": "verified:test-principal",
+          "cause": {
+            "id": "z",
+            "scope": "local"
+          }
+        }
+      ],
+      "expected": {
+        "attempted": [],
+        "blocked": [
+          "a"
+        ],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "dependency_unresolved"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-verified-gap-without-blocked-event",
+      "events": [],
+      "frontier": {
+        "continuous": false,
+        "gap_detected": true
+      },
+      "expected": {
+        "attempted": [],
+        "blocked": [],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "history_gap"
+        ],
+        "proposals": []
+      }
+    },
+    {
+      "id": "core-specific-gap-dominates-nominal-frontier",
+      "events": [
+        {
+          "id": "a",
+          "context": "demo",
+          "scope": "counter-1",
+          "type": "noop",
+          "data": {},
+          "asserted_by": "verified:test-principal"
+        }
+      ],
+      "frontier": {
+        "continuous": true,
+        "gap_detected": true
+      },
+      "expected": {
+        "attempted": [
+          "a"
+        ],
+        "blocked": [],
+        "working": {
+          "n": 0
+        },
+        "evaluation": "valid",
+        "completeness": "incomplete",
+        "diagnostics": [
+          "history_gap"
+        ],
+        "proposals": []
+      }
+    }
+  ]
+}
