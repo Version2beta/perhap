@@ -1,6 +1,9 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
 Current overlay: Publication Stage 3B completion. Binding docs/rddd/RECOVERY-SPEC.md.
+Evidence/current row counts: docs/rddd/RECOVERY-RESULTS.md. Minimum adapter boundary:
+docs/rddd/GO-GATEWAY-CONTRACT.md. OBSERVATION-3B-VECTOR-STATUS.md is the preserved
+historical design-review inventory, not the final execution report.
 Add retained planning/recoverable slots; unchanged SQLite format, dependencies and judge.
 Historical overlay: Publication Stage 3B1 finite authorized in-process sessions.
 Contract/map: docs/rddd/SESSION-SPEC.md. Bounded split: cursor/resume/resnapshot
