@@ -85,5 +85,5 @@ func (s *Store) Close() error {
 // Run performs one bounded single-worker pass. The owner closes source, sink and
 // confirmations after it returns; repeated passes/restarts resume durable work.
 func Run(ctx context.Context, source Source, sink Sink, confirmations *Store, limits Limits) (Report, error) {
-	return Report{}, nil
+	return runPass(ctx, source, sink, confirmations, limits)
 }
