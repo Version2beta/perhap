@@ -19,8 +19,9 @@ const cleanupReserveBytes = 2048
 
 // Acquire pins retained history; ID is obs/owner/nonce/after. See RECOVERY-SPEC.
 // The pin reuses an existing prepare entry with the latest snapshot. The anchor is
-// the immutable record at revision after, selected in the same transaction. An
-// identical retry returns the original pin, even after newer revisions exist.
+// the immutable record at revision after (the pinned snapshot when after is 0),
+// selected in the same transaction. An identical retry returns the original pin,
+// even after newer revisions exist.
 func (j *Journal) Acquire(ctx context.Context, id string, v Identity, after uint64) (Retained, error) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -43,7 +44,7 @@ func (j *Journal) Acquire(ctx context.Context, id string, v Identity, after uint
 			if p.View != v {
 				return nil, ErrConflict
 			}
-			anchor, err := st.anchorAt(v, after)
+			anchor, err := st.anchorOf(p, after)
 			if err != nil {
 				return nil, err
 			}
@@ -58,14 +59,14 @@ func (j *Journal) Acquire(ctx context.Context, id string, v Identity, after uint
 		if !ok {
 			return nil, fmt.Errorf("%w: no evaluated public snapshot", ErrUnavailable)
 		}
-		anchor, err := st.anchorAt(v, after)
+		plan := Plan{ID: id, View: v, Snapshot: snap}
+		anchor, err := st.anchorOf(plan, after)
 		if err != nil {
 			return nil, err
 		}
 		if len(st.plans) >= j.limits.MaxPins {
 			return nil, ErrCapacity
 		}
-		plan := Plan{ID: id, View: v, Snapshot: snap}
 		out = Retained{Plan: plan, Anchor: anchor}
 		return &entry{Format: entryFormat, Sequence: st.entries + 1, Kind: kindPrepare, Plan: &plan}, nil
 	})
@@ -108,8 +109,12 @@ func (j *Journal) ReadRetained(ctx context.Context, id string, after uint64, max
 	if err := j.host.Authorize(ctx, p.View); err != nil {
 		return Batch{}, err
 	}
+	anchor, err := st.anchorOf(p, pinned)
+	if err != nil {
+		return Batch{}, err
+	}
 	h := st.head(p.View)
-	if after < pinned || after > h.Revision {
+	if after < anchor.Revision || after > h.Revision {
 		return Batch{}, fmt.Errorf("%w: position outside retained range", ErrStale)
 	}
 	through := h.Revision
@@ -151,10 +156,16 @@ func reserveCleanup(st *journalState, e *entry, bodyBytes, max int) error {
 }
 
 // parseRetainedID checks obs/owner/nonce/after and returns the after suffix.
-// The suffix must be canonical decimal so that one ID names one position.
+// The suffix must be canonical decimal so that one ID names one position. The whole
+// ID must be ASCII, so storage round-trips it without lossy re-encoding.
 func parseRetainedID(id string) (uint64, error) {
 	if len(id) > retainedIDMax {
 		return 0, errInvalidArgument
+	}
+	for i := 0; i < len(id); i++ {
+		if id[i] >= 0x80 {
+			return 0, errInvalidArgument
+		}
 	}
 	parts := strings.Split(id, "/")
 	if len(parts) != 4 || parts[0] != retainedPrefix || parts[1] == "" || parts[2] == "" {
@@ -167,12 +178,13 @@ func parseRetainedID(id string) (uint64, error) {
 	return n, nil
 }
 
-// anchorAt returns the immutable record at revision after; 0 is the empty start.
-func (st *journalState) anchorAt(v Identity, after uint64) (Record, error) {
+// anchorOf returns the immutable record a plan's ID names: the plan's pinned snapshot
+// for position 0, otherwise the record at revision after.
+func (st *journalState) anchorOf(p Plan, after uint64) (Record, error) {
 	if after == 0 {
-		return Record{View: v}, nil
+		return p.Snapshot, nil
 	}
-	rs := st.records[v]
+	rs := st.records[p.View]
 	if after > uint64(len(rs)) {
 		return Record{}, fmt.Errorf("%w: anchor is beyond the evaluated history", ErrStale)
 	}

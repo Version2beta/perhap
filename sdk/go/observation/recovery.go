@@ -45,6 +45,7 @@ type Recovered struct {
 	plan      viewjournal.Plan
 	ctx       context.Context
 	cancel    context.CancelFunc
+	session   string     // random envelope fence for this session; never a Plan ID
 	mu        sync.Mutex // serializes Step and cleanup; Close waits on it
 	kind      string     // "snapshot" or "replacement" frame still owed by the first Step
 	last      viewjournal.Record
@@ -108,11 +109,15 @@ func (m *Recovery) Resume(ctx context.Context, b Binding, token string, r Recove
 		if err != nil {
 			return nil, err
 		}
+		session, err := newSessionFence()
+		if err != nil {
+			return nil, err
+		}
 		ret, err := m.acquire(opCtx, b, claims.Record.Revision)
 		if err != nil {
 			return nil, err
 		}
-		s := newRecovered(m, opCtx, cancel, b, r, ret.Plan, "", ret.Anchor)
+		s := newRecovered(m, opCtx, cancel, b, r, ret.Plan, "", session, ret.Anchor)
 		if !reflect.DeepEqual(ret.Anchor, claims.Record) {
 			return nil, m.discard(s, ErrSequence)
 		}
@@ -183,18 +188,32 @@ func (m *Recovery) snapshotSession(ctx context.Context, cancel context.CancelFun
 	if err := m.retire(); err != nil {
 		return nil, err
 	}
+	session, err := newSessionFence()
+	if err != nil {
+		return nil, err
+	}
 	ret, err := m.acquire(ctx, b, 0)
 	if err != nil {
 		return nil, err
 	}
-	return m.activate(newRecovered(m, ctx, cancel, b, r, ret.Plan, kind, viewjournal.Record{}))
+	return m.activate(newRecovered(m, ctx, cancel, b, r, ret.Plan, kind, session, viewjournal.Record{}))
 }
 
 // admit checks current authority under the Gate fence before any state is exposed.
+// CallbackTimeout bounds the check, and an admission that expired is never granted,
+// even when the authority returned nil after its deadline.
 func (m *Recovery) admit(ctx context.Context, b Binding) error {
+	actx, cancel := context.WithTimeout(ctx, m.limits.CallbackTimeout)
+	defer cancel()
 	m.gate.mu.Lock()
 	defer m.gate.mu.Unlock()
-	return m.gate.admitLocked(ctx, b)
+	if err := m.gate.admitLocked(actx, b); err != nil {
+		return canonicalCtx(err)
+	}
+	if err := actx.Err(); err != nil {
+		return canonicalCtx(err)
+	}
+	return nil
 }
 
 // retire joins the slot's prior session. If its pin cannot be released, the slot keeps
@@ -261,7 +280,7 @@ func (m *Recovery) acquire(ctx context.Context, b Binding, after uint64) (viewjo
 		m.uncertain = true
 		return viewjournal.Retained{}, errors.Join(ErrUnknown, ErrCleanup)
 	case err != nil:
-		return viewjournal.Retained{}, mapJournal(err)
+		return viewjournal.Retained{}, mapStorage(err)
 	}
 	return ret, nil
 }
@@ -275,18 +294,33 @@ func (m *Recovery) newPinID(after uint64) (string, error) {
 	return fmt.Sprintf("obs/%s/%x/%d", m.owner, nonce[:], after), nil
 }
 
+// newSessionFence makes the opaque envelope fence of one session. It is random, so it
+// is neither a Plan ID nor the same after a reconnect.
+func newSessionFence() (string, error) {
+	var fence [16]byte
+	if _, err := rand.Read(fence[:]); err != nil {
+		return "", ErrUnavailable
+	}
+	return fmt.Sprintf("%x", fence[:]), nil
+}
+
 // verify caps token bytes before parsing. It returns claims only for a barrier of b.
 // Verifier failure is unavailability, not evidence that the cursor is invalid.
 func (m *Recovery) verify(ctx context.Context, b Binding, token string) (Claims, error) {
 	if token == "" || len(token) > m.limits.MaxTokenBytes {
 		return Claims{}, ErrCannotResume
 	}
-	c, err := m.proofs.Verify(ctx, token)
+	cctx, cancel := context.WithTimeout(ctx, m.limits.CallbackTimeout)
+	defer cancel()
+	c, err := m.proofs.Verify(cctx, token)
 	if errors.Is(err, ErrCannotResume) {
 		return Claims{}, ErrCannotResume
 	}
 	if err != nil {
 		return Claims{}, mapProof(err)
+	}
+	if err := cctx.Err(); err != nil {
+		return Claims{}, canonicalCtx(err)
 	}
 	if c.Binding != b || c.Purpose != "barrier" || c.Record.View != b.View || c.Record.Revision == 0 {
 		return Claims{}, ErrCannotResume
@@ -296,8 +330,11 @@ func (m *Recovery) verify(ctx context.Context, b Binding, token string) (Claims,
 
 // issue returns a proof only after verifying that it certifies the exact expected claims.
 // Issue receives its own copy, so a mutated copy cannot change the expected record.
+// CallbackTimeout bounds both calls, and an expired result is never returned.
 func (m *Recovery) issue(ctx context.Context, b Binding, purpose string, rec viewjournal.Record) (string, error) {
-	token, err := m.proofs.Issue(ctx, claimsFor(b, purpose, rec))
+	cctx, cancel := context.WithTimeout(ctx, m.limits.CallbackTimeout)
+	defer cancel()
+	token, err := m.proofs.Issue(cctx, claimsFor(b, purpose, rec))
 	if err != nil {
 		return "", mapProof(err)
 	}
@@ -307,13 +344,16 @@ func (m *Recovery) issue(ctx context.Context, b Binding, purpose string, rec vie
 	if len(token) > m.limits.MaxTokenBytes {
 		return "", ErrCapacity
 	}
-	got, err := m.proofs.Verify(ctx, token)
+	got, err := m.proofs.Verify(cctx, token)
 	if err != nil {
 		return "", mapProof(err)
 	}
 	want := claimsFor(b, purpose, rec)
 	if got.Binding != want.Binding || got.Purpose != want.Purpose || !reflect.DeepEqual(got.Record, want.Record) {
 		return "", ErrSequence
+	}
+	if err := cctx.Err(); err != nil {
+		return "", canonicalCtx(err)
 	}
 	return token, nil
 }
@@ -337,7 +377,11 @@ func (m *Recovery) deliver(ctx context.Context, b Binding, f RecoveryFrame, r Re
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if err := g.admitLocked(cctx, b); err != nil {
-		return err
+		return canonicalCtx(err)
+	}
+	// Check may return nil after the deadline; an expired admission reaches no recipient.
+	if err := cctx.Err(); err != nil {
+		return canonicalCtx(err)
 	}
 	// The recipient may have disclosed before returning an error or expiry.
 	if err := r(cctx, f); err != nil || cctx.Err() != nil {
@@ -347,10 +391,10 @@ func (m *Recovery) deliver(ctx context.Context, b Binding, f RecoveryFrame, r Re
 }
 
 // pageFits bounds a buffered page before any of its revisions is released.
-func (m *Recovery) pageFits(recs []viewjournal.Record) error {
+func (m *Recovery) pageFits(session string, recs []viewjournal.Record) error {
 	total := 0
 	for _, r := range recs {
-		n, err := frameSize(RecoveryFrame{Kind: "revision", Record: r})
+		n, err := frameSize(RecoveryFrame{Kind: "revision", Session: session, Record: r})
 		if err != nil {
 			return ErrUnavailable
 		}
@@ -366,7 +410,7 @@ func (m *Recovery) pageFits(recs []viewjournal.Record) error {
 func (m *Recovery) reconcile(ctx context.Context) error {
 	plans, err := m.source.Plans(ctx)
 	if err != nil {
-		return mapJournal(err)
+		return mapStorage(err)
 	}
 	prefix := "obs/" + m.owner + "/"
 	for _, p := range plans {
@@ -390,8 +434,8 @@ func (m *Recovery) releasePin(id string) error {
 	return nil
 }
 
-func newRecovered(m *Recovery, ctx context.Context, cancel context.CancelFunc, b Binding, r RecoveryRecipient, p viewjournal.Plan, kind string, last viewjournal.Record) *Recovered {
-	return &Recovered{m: m, binding: b, recipient: r, plan: p, ctx: ctx, cancel: cancel, kind: kind, last: last}
+func newRecovered(m *Recovery, ctx context.Context, cancel context.CancelFunc, b Binding, r RecoveryRecipient, p viewjournal.Plan, kind, session string, last viewjournal.Record) *Recovered {
+	return &Recovered{m: m, binding: b, recipient: r, plan: p, ctx: ctx, cancel: cancel, kind: kind, session: session, last: last}
 }
 
 // Step releases the owed snapshot once, then at most one validated page of successors,
@@ -435,7 +479,7 @@ func (s *Recovered) step() error {
 		if err != nil {
 			return err
 		}
-		if err := s.m.deliver(s.ctx, s.binding, RecoveryFrame{Kind: s.kind, Record: copyRecord(snap), Proof: token}, s.recipient); err != nil {
+		if err := s.m.deliver(s.ctx, s.binding, RecoveryFrame{Kind: s.kind, Session: s.session, Record: copyRecord(snap), Proof: token}, s.recipient); err != nil {
 			return err
 		}
 		s.kind = ""
@@ -443,17 +487,17 @@ func (s *Recovered) step() error {
 	}
 	b, err := s.m.source.ReadRetained(s.ctx, s.plan.ID, s.last.Revision, s.m.limits.Page)
 	if err != nil {
-		return mapJournal(err)
+		return mapStorage(err)
 	}
 	recs, err := validPage(b, s.plan, s.last.Revision, s.m.limits.Page)
 	if err != nil {
 		return err
 	}
-	if err := s.m.pageFits(recs); err != nil {
+	if err := s.m.pageFits(s.session, recs); err != nil {
 		return err
 	}
 	for _, r := range recs {
-		if err := s.m.deliver(s.ctx, s.binding, RecoveryFrame{Kind: "revision", Record: copyRecord(r)}, s.recipient); err != nil {
+		if err := s.m.deliver(s.ctx, s.binding, RecoveryFrame{Kind: "revision", Session: s.session, Record: copyRecord(r)}, s.recipient); err != nil {
 			return err
 		}
 		s.last = r
@@ -462,7 +506,7 @@ func (s *Recovered) step() error {
 	if err != nil {
 		return err
 	}
-	return s.m.deliver(s.ctx, s.binding, RecoveryFrame{Kind: "barrier", Record: copyRecord(s.last), Proof: token}, s.recipient)
+	return s.m.deliver(s.ctx, s.binding, RecoveryFrame{Kind: "barrier", Session: s.session, Record: copyRecord(s.last), Proof: token}, s.recipient)
 }
 
 // cleanup releases the pin once. The caller must hold s.mu.
@@ -485,11 +529,11 @@ func claimsFor(b Binding, purpose string, rec viewjournal.Record) Claims {
 func validRecoveryFrame(b Binding, f RecoveryFrame) error {
 	switch f.Kind {
 	case "snapshot", "replacement", "barrier":
-		if f.Record.View != b.View || f.Record.Revision == 0 || f.Proof == "" {
+		if f.Record.View != b.View || f.Record.Revision == 0 || f.Proof == "" || f.Session == "" {
 			return ErrDenied
 		}
 	case "revision":
-		if f.Record.View != b.View || f.Record.Revision == 0 || f.Proof != "" {
+		if f.Record.View != b.View || f.Record.Revision == 0 || f.Proof != "" || f.Session == "" {
 			return ErrDenied
 		}
 	case "cannot-resume":
@@ -510,14 +554,45 @@ func frameSize(f RecoveryFrame) (int, error) {
 
 // mapProof keeps context categories and reports every other proof failure as unavailable.
 func mapProof(err error) error {
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return err
+	if isCtxErr(err) {
+		return canonicalCtx(err)
 	}
 	return ErrUnavailable
 }
 
+// mapStorage maps journal failures to public categories, with context errors canonical.
+func mapStorage(err error) error {
+	return canonicalCtx(mapJournal(err))
+}
+
+// canonicalCtx replaces a wrapped context error with the bare sentinel, so callers see
+// one stable category and no protected diagnostic text. Other errors are unchanged.
+func canonicalCtx(err error) error {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return context.Canceled
+	case errors.Is(err, context.DeadlineExceeded):
+		return context.DeadlineExceeded
+	}
+	return err
+}
+
+func isCtxErr(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
+// validOwner accepts a non-empty ASCII name without '/', so the owner's pin prefix is
+// unambiguous and survives storage without lossy re-encoding.
 func validOwner(owner string) bool {
-	return owner != "" && len(owner) <= maxOwnerBytes && !strings.Contains(owner, "/")
+	if owner == "" || len(owner) > maxOwnerBytes || strings.Contains(owner, "/") {
+		return false
+	}
+	for i := 0; i < len(owner); i++ {
+		if owner[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
 
 func validRecoveryLimits(l RecoveryLimits) bool {
