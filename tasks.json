@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/viewjournal",
-  "format_check": "test -z \"$(gofmt -l sdk/go/viewjournal)\"",
+  "format": "gofmt -w sdk/go/observation",
+  "format_check": "test -z \"$(gofmt -l sdk/go/observation)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -76,7 +76,10 @@
     "^sdk/go/delivery/testdata/",
     "^sdk/go/delivery/",
     "^sdk/go/viewjournal/contracts\\.go$",
-    "^sdk/go/viewjournal/testdata/"
+    "^sdk/go/viewjournal/testdata/",
+    "^sdk/go/viewjournal/",
+    "^sdk/go/observation/contracts\\.go$",
+    "^sdk/go/observation/testdata/"
   ],
   "tasks": [
     {
@@ -255,17 +258,46 @@
       "tier": "normal"
     },
     {
-      "id": "P3AALL",
-      "title": "Full tree including real view-journal recovery/race/vet and prior checks",
+      "id": "B1BOOT",
+      "title": "TestBootstrap40RaceAndBarrier, TestFreshBootstrapAfterReopenAndLimits",
+      "test": "go test -count=1 -v ./sdk/go/observation -run '^(TestBootstrap40RaceAndBarrier|TestFreshBootstrapAfterReopenAndLimits)$'",
+      "expect": [
+        "^--- PASS: TestBootstrap40RaceAndBarrier \\(.*\\)$",
+        "^--- PASS: TestFreshBootstrapAfterReopenAndLimits \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "B1RELEASE",
+      "title": "TestReleaseRevocationOrders",
+      "test": "go test -count=1 -v ./sdk/go/observation -run '^(TestReleaseRevocationOrders)$'",
+      "expect": [
+        "^--- PASS: TestReleaseRevocationOrders \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "B1FAIL",
+      "title": "TestInvalidScanAndDescriptor, TestSessionBoundsCancellationAndCleanup",
+      "test": "go test -count=1 -v ./sdk/go/observation -run '^(TestInvalidScanAndDescriptor|TestSessionBoundsCancellationAndCleanup)$'",
+      "expect": [
+        "^--- PASS: TestInvalidScanAndDescriptor \\(.*\\)$",
+        "^--- PASS: TestSessionBoundsCancellationAndCleanup \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "B1ALL",
+      "title": "Full tree, race, vet and prior stage judge checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
       "expect": [
-        "^--- PASS: TestViewSnapshot40Tail41 \\(.*\\)$",
-        "^--- PASS: TestViewEqualityFreshnessAndIdentity \\(.*\\)$",
-        "^--- PASS: TestViewPublicMetadataEquality \\(.*\\)$",
-        "^--- PASS: TestViewNullBatchesAndInterruptedScan \\(.*\\)$",
-        "^--- PASS: TestViewUnknownCorruptAndOwnership \\(.*\\)$",
+        "^--- PASS: TestBootstrap40RaceAndBarrier \\(.*\\)$",
+        "^--- PASS: TestFreshBootstrapAfterReopenAndLimits \\(.*\\)$",
+        "^--- PASS: TestReleaseRevocationOrders \\(.*\\)$",
+        "^--- PASS: TestInvalidScanAndDescriptor \\(.*\\)$",
+        "^--- PASS: TestSessionBoundsCancellationAndCleanup \\(.*\\)$",
         "^--- PASS: TestViewPlanCrashRecovery \\(.*\\)$",
-        "^--- PASS: TestViewRealCrashRecovery \\(.*\\)$",
+        "^--- PASS: TestViewSnapshot40Tail41 \\(.*\\)$",
         "^--- PASS: TestDeliveryRealCrashRecovery \\(.*\\)$",
         "^--- PASS: TestLedgerRealCrashAndOwners \\(.*\\)$",
         "^--- PASS: TestREVFixtures \\(.*\\)$",

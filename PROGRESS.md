@@ -1,4 +1,8 @@
-# CORE/REV, Publication Ledger/Delivery and private View Journal Stage 3A
+# CORE/REV, Publication Ledger/Delivery, View Journal and Session Stage 3B1
+
+Stage 3B1 is the explicitly bounded finite bootstrap/release slice in SESSION-SPEC.
+Cursor/resume/resnapshot/expiry/restart identity policy are deferred to 3B2.
+Preserve Stage 3A and all earlier code/tests; begin new session implementation from stubs.
 
 Stage 3A kit: docs/rddd/VIEWJOURNAL-SPEC.md; independent per-view revisions,
 host-verified rendering/cut and durable private snapshot plans. Begin from stubs;

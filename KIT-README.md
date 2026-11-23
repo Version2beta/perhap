@@ -1,6 +1,9 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
-Current overlay: Publication Stage 3A private view journal. Binding contract:
+Current overlay: Publication Stage 3B1 finite authorized in-process sessions.
+Contract/map: docs/rddd/SESSION-SPEC.md. Bounded split: cursor/resume/resnapshot
+and trust/expiry persistence remain 3B2. No new dependencies or wire formats.
+Historical overlay: Publication Stage 3A private view journal. Binding contract:
 docs/rddd/VIEWJOURNAL-SPEC.md. No new dependency; existing SQLite CGO toolchain.
 New P3ACUT/P3ASTATE/P3ARECOVER/P3AALL tasks retain prior stages as regressions.
 No external observations/cursors/sessions or runtime authority are implemented.

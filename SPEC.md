@@ -106,3 +106,10 @@ Binding additional contract and requirements map: docs/rddd/VIEWJOURNAL-SPEC.md.
 Only sdk/go/viewjournal implements independent projection/view revisions and durable
 snapshot/tail plans. Preserve all prior code/storage formats. No Stage 3B sessions,
 cursor issuance, external disclosure, revocation or transport is implemented.
+
+## Part 6 — Publication Stage 3B1 finite in-process sessions
+
+Binding bounded slice: docs/rddd/SESSION-SPEC.md. New sdk/go/observation owns
+finite authorized bootstrap sessions, injected as-of certification and synchronous
+release/revocation fencing. Cursor issuance/verification, resume/resnapshot and
+restart/expiry policy are explicitly deferred to 3B2, not claimed by this kit.
