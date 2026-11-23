@@ -35,12 +35,13 @@ func TestService_ReplayFromJetStreamSortsAndSkipsInternalSubjects(t *testing.T) 
 	entityID := "cart-1"
 	first := testCounterEvent(t, entityID, "incremented", 1)
 	second := testCounterEvent(t, entityID, "incremented", 2)
-	if first.ID >= second.ID {
-		t.Fatalf("expected first event ID to sort before second: %q >= %q", first.ID, second.ID)
-	}
-	publishStoredEvent(t, nc, first)
-	publishInternalModelUpdate(t, nc, service.config.Context, entityID)
+	// Fixed UUIDv6 fixtures avoid assuming generation order is lexical order.
+	first.ID = "01f1e6e0-8ca9-6001-8000-000000000001"
+	second.ID = "01f1e6e0-8ca9-6002-8000-000000000002"
+	// Publish in reverse ID order to exercise canonical replay sorting.
 	publishStoredEvent(t, nc, second)
+	publishInternalModelUpdate(t, nc, service.config.Context, entityID)
+	publishStoredEvent(t, nc, first)
 	publishStoredException(t, nc, service.config.Context, entityID)
 
 	model, reducedThrough, err := service.replayFromJetStream(entityID)
