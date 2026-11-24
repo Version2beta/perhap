@@ -1,8 +1,9 @@
 # Minimum stable Go boundary for the TypeScript integration adapter
 
-This records the required semantic boundary, NOT a new transport/wire API or an
-implemented submission service. No TypeScript source changed. Observation uses the
-new completed recovery API; old 3B1 Manager alone is not sufficient for integration.
+This records the semantic boundary, not a selected transport/wire API.
+No TypeScript source changed. Gateway-only durable submission is now
+in sdk/go/submission; exact evidence and scope are in SUBMIT-RESOLVE-RESULTS.md.
+Observation uses the recovery API; old 3B1 Manager alone is insufficient.
 
 ## 1. Trusted configuration and identity before use
 
@@ -63,7 +64,7 @@ projection evaluation/rendering and normalized parameters belong to the register
 host; there is no automatic projector from existing runtime events or remote schema
 execution. New domain models require explicit registration/equality review.
 
-## 3. Submission contract still required — not implemented by this stage
+## 3. Submission contract — implemented for gateway-only SQLite admission
 
 The minimal adapter seam needs these operations (names descriptive):
 
@@ -91,15 +92,18 @@ and no-retained-knowledge. Empty lookup cannot exclude in-flight admission. Neit
 expiry nor unknown permits generating a replacement ID or reexecuting old work;
 retain tombstones, retire namespace or require explicit authorized recovery.
 
-Current reconciliation ledger receipts and delivery confirmation journals do NOT
-supply this submission service. This is the minimum remaining Go capability needed
-to unblock the submission portion of a TypeScript Stage 2B adapter.
+Reconciliation receipts and delivery confirmation journals do NOT supply this service.
+New submission.Owner/Client provides it in a separate SQLite file for gateway traffic
+only, with trusted registered codecs and explicit CORE evaluation. Legacy JetStream
+admission is outside the guarantee. Receipt expiry is unsupported; admitted identity
+is retained for store lifetime with bounded capacity refusal. SUBMIT-RESOLVE-RESULTS.md
+records the concrete Submit/Resolve/Recipient/error mapping.
 
 ## 4. Integration gate
 
-Observation can now support a separately reviewed in-process adapter harness. Full
-TypeScript submission integration remains blocked on actual Submit/Resolve/status
-semantics above. Before a network adapter: settle descriptor/equality/encoding,
+Observation and gateway-only Submit/Resolve now support one separately reviewed
+adapter harness. Actual TypeScript integration still needs that adapter and agreed
+host authority/schema/encoding; no unified legacy JetStream admission is promised. Before a network adapter: settle descriptor/equality/encoding,
 issuer/verifier trust and key/expiry policy, caller-to-owner-slot isolation, actual
 output/revocation boundary and bounded transport disposal. Run shared S/O/A/V cases
 through actual Go and TypeScript implementations; fake authorities or one backend

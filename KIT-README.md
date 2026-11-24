@@ -1,6 +1,8 @@
 # CORE Stage 1 / pure REV Stage 2 kit
 
 Current overlay: gateway Submit/Resolve, docs/rddd/SUBMIT-RESOLVE-SPEC.md.
+Current acceptance/vector counts and stable adapter mapping:
+docs/rddd/SUBMIT-RESOLVE-RESULTS.md.
 Separate SQLite file, existing engine/durability; no JetStream bridge or adapter.
 Historical overlay: Publication Stage 3B completion. Binding docs/rddd/RECOVERY-SPEC.md.
 Evidence/current row counts: docs/rddd/RECOVERY-RESULTS.md. Minimum adapter boundary:
