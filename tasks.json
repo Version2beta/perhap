@@ -409,6 +409,18 @@
       "tier": "normal"
     },
     {
+      "id": "GSREVIEW",
+      "title": "Completion budget, normalization bounds, release accounting and opaque evidence",
+      "test": "go test -count=1 -v ./sdk/go/submission -run '^(TestSubmissionReservedCompletionAndReopenBounds|TestSubmissionEnvelopeLimitsAndReferences|TestSubmissionReplyAccountingAndOpaqueErrors|TestSubmissionOpaqueEvaluationEvidence)$'",
+      "expect": [
+        "^--- PASS: TestSubmissionReservedCompletionAndReopenBounds \\(.*\\)$",
+        "^--- PASS: TestSubmissionEnvelopeLimitsAndReferences \\(.*\\)$",
+        "^--- PASS: TestSubmissionReplyAccountingAndOpaqueErrors \\(.*\\)$",
+        "^--- PASS: TestSubmissionOpaqueEvaluationEvidence \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
       "id": "GSALL",
       "title": "All earlier stages plus gateway full Go/race/vet and node checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
@@ -451,7 +463,11 @@
         "^--- PASS: TestSubmissionFailureCapacityAndRecovery \\(.*\\)$",
         "^--- PASS: TestSubmissionRealCrashAndOwner \\(.*\\)$",
         "^--- PASS: TestSubmissionCommittedRecoveryIntegrity \\(.*\\)$",
-        "^--- PASS: TestSubmissionCloseAndRevocation \\(.*\\)$"
+        "^--- PASS: TestSubmissionCloseAndRevocation \\(.*\\)$",
+        "^--- PASS: TestSubmissionReservedCompletionAndReopenBounds \\(.*\\)$",
+        "^--- PASS: TestSubmissionEnvelopeLimitsAndReferences \\(.*\\)$",
+        "^--- PASS: TestSubmissionReplyAccountingAndOpaqueErrors \\(.*\\)$",
+        "^--- PASS: TestSubmissionOpaqueEvaluationEvidence \\(.*\\)$"
       ],
       "tier": "normal"
     }

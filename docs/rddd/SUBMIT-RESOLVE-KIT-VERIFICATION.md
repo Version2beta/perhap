@@ -48,6 +48,33 @@ registry, production identity/authority, distributed ownership, persistence poli
 administration, general canonical wire format and TypeScript adapter remain external.
 S06 expiry unsupported; whole rows counted only from actual complete oracle executions.
 
+## Verified review overlay
+
+Kit 06a18d150a62038c79591756a60b51c871d5929a; judged implementation
+914dc720692bbb94039995df230a681181ee485c passed original28 groups in one iteration,
+attempt1. Source review added GSREVIEW without weakening earlier tests: completion
+reservation/refused receipt absence, normalized envelope budget, recovered bounds,
+optional correlation/codec-owned foreign links, expired/double/error-swallowing release
+callbacks, canonical public context errors and opaque evidence references. These
+regressions fail against actual judged implementation, not just empty stubs.
+
+Original private reference passes all29 exact judge groups with this overlay; actual
+judged files restored unchanged before corrective baseline. Model-created helper
+files were parked outside checkout only during reference verification and restored.
+No private implementation shipped. Corrective run uses new GSREVIEW and remaining
+MAX_ITER=11 MAX_ATTEMPTS=3, preserving aggregate12 iteration cap.
+
+During verification, one full run exposed an existing NATS fixture TempDir cleanup
+failure in TestSupervisor_EmitExceptionPublishesToJetStream despite its existing
+Shutdown/WaitForShutdown cleanup. Unrelated source/test left unchanged. Another new
+release regression initially used an unrealistically short50ms whole-operation
+budget, which failed under full-suite fsync contention; replaced that schedule with
+deterministic caller cancellation inside the release host (no sleeps/retries).
+After this causal test correction the full reference judge passed all29 groups.
+Logs retained in ignored .loop/submit-reference-full-go.log and
+.loop/submit-review-reference.check. The NATS cleanup observation remains a separate
+known intermittent regression-suite risk, not evidence of a submission failure.
+
 Next authorized command after clean local stub commit:
 MAX_ITER=12 MAX_ATTEMPTS=3 scripts/loop.sh
 Existing script/pinned models unchanged. No push, merge or upstream mutation.

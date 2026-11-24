@@ -63,7 +63,16 @@ controlled cut is known rollback. Public outcome never guesses globally no admis
 MaxEvents/MaxEntries/MaxBytes/MaxEventBytes/Timeout all positive. Accepted identity and
 facts retained forever within store; duplicates/lookups still work at capacity. Reserve
 future transition capacity for receipt/admission pending work before acceptance; if no
-room, refuse before recording a receipt. No orphan background tasks. Close cancels and
+room, refuse before recording a receipt. No orphan background tasks. Before admitting a new receipt, reserve both record
+slots and encoded-byte headroom for existing pending decisions and first evaluations;
+refusal cannot leave a new receipt consuming another event's completion budget.
+MaxEventBytes covers the normalized envelope, not merely original Data length. Reopen
+must enforce configured event/entry/byte bounds too. Correlation may be empty and
+causation references remain codec-owned opaque links; UUIDv6 is imposed only on the
+gateway event identity, not on foreign references. Store evidence as an opaque attempt
+reference, not a public hash of private event history/diagnostics. Reply callback
+accounting remains owned even if a host ignores its error, calls twice or calls after
+context expiry. Normalize private wrapped context errors to safe canonical categories. Close cancels and
 joins cooperative in-flight work then closes owned connection, idempotently. No cross-file
 atomicity with publication/observation or JetStream; legacy ingress untracked/outside scope.
 
