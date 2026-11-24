@@ -2,11 +2,11 @@ package submission
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"sort"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -61,6 +61,9 @@ type state struct {
 	attempts   map[string]string
 	records    int
 	bytes      int
+	// reservedRecords and reservedBytes total reserveOf over all entries, kept by fold.
+	reservedRecords int
+	reservedBytes   int
 }
 
 func newState(generation string) *state {
@@ -86,7 +89,7 @@ func (st *state) check(rec record) error {
 			return errRecord
 		}
 	case "evaluation":
-		if !found || rec.Event != nil || e.facts.Admission != "admitted" || rec.Version != e.facts.Version+1 || rec.Decision != "" || !text(rec.Attempt) || !validOutcome(rec.Evaluation) || rec.Evidence == "" {
+		if !found || rec.Event != nil || e.facts.Admission != "admitted" || rec.Version != e.facts.Version+1 || rec.Decision != "" || !text(rec.Attempt) || len(rec.Attempt) > maxAttemptBytes || !validOutcome(rec.Evaluation) || rec.Evidence == "" {
 			return errRecord
 		}
 		if _, used := st.attempts[rec.Attempt]; used {
@@ -98,33 +101,133 @@ func (st *state) check(rec record) error {
 	return nil
 }
 
-// fits enforces the entry and byte bounds for one more record of the given size.
-func (st *state) fits(size int, l Limits) error {
-	if st.records+1 > l.MaxEntries || st.bytes+size > l.MaxBytes {
+// maxAttemptBytes bounds the only caller-supplied text in an evaluation record, so the
+// worst-case size of a reserved evaluation is known when the receipt is accepted.
+const maxAttemptBytes = 128
+
+const zeroUUID = "00000000-0000-0000-0000-000000000000"
+
+// Worst-case encoded sizes of the two transitions an entry can still owe. Every field is
+// at its largest: maximal sequence and version numbers, a canonical UUID, and an attempt
+// of maxAttemptBytes '<' characters, which JSON escapes to six bytes each.
+var (
+	admissionReserveBytes = encodedBytes(record{Format: recordFormat, Sequence: math.MaxInt, Kind: "admission",
+		EventID: zeroUUID, Version: math.MaxUint64, Decision: "unresolved"})
+	evaluationReserveBytes = encodedBytes(record{Format: recordFormat, Sequence: math.MaxInt, Kind: "evaluation",
+		EventID: zeroUUID, Version: math.MaxUint64, Attempt: strings.Repeat("<", maxAttemptBytes),
+		Evaluation: "evaluated", Evidence: zeroUUID})
+)
+
+func encodedBytes(rec record) int {
+	b, err := json.Marshal(rec)
+	if err != nil {
+		panic(err) // a fixed template of plain strings and numbers cannot fail to encode
+	}
+	return len(b)
+}
+
+// reserveOf returns the record slots and encoded bytes an entry still owes: its admission
+// decision while pending, and its first evaluation until a terminal admission rejects it.
+func reserveOf(f Facts) (records, bytes int) {
+	if pendingAdmission(f.Admission) {
+		records++
+		bytes += admissionReserveBytes
+	}
+	if f.Admission != "rejected" && f.Evaluation == "not-established" {
+		records++
+		bytes += evaluationReserveBytes
+	}
+	return records, bytes
+}
+
+// fits reports ErrCapacity unless appending rec keeps every owed transition within the
+// record and byte bounds. Ordinary writes therefore cannot consume the room promised to
+// pending admissions or first evaluations.
+func (st *state) fits(rec record, size int, l Limits) error {
+	owedRecords, owedBytes := st.owedAfter(rec)
+	if st.records+1+owedRecords > l.MaxEntries || st.bytes+size+owedBytes > l.MaxBytes {
 		return ErrCapacity
 	}
 	return nil
 }
 
-// fold applies a record that check has already accepted.
-func (st *state) fold(rec record, size int) {
+// owedAfter returns the reservation totals that remain owed once rec is appended.
+// Only the entry rec touches changes, so its old reservation is replaced by its new one.
+func (st *state) owedAfter(rec record) (int, int) {
+	var cur Facts
+	var ev storedEvent
+	oldRecords, oldBytes := 0, 0
+	if e, ok := st.entries[rec.EventID]; ok {
+		cur, ev = e.facts, e.ev
+		oldRecords, oldBytes = reserveOf(cur)
+	}
+	if rec.Kind == "receipt" {
+		ev = *rec.Event
+	}
+	newRecords, newBytes := reserveOf(nextFacts(st.generation, ev, cur, rec))
+	return st.reservedRecords - oldRecords + newRecords, st.reservedBytes - oldBytes + newBytes
+}
+
+// within checks replayed state against the configured bounds. Reopening with smaller
+// bounds fails rather than keeping state that later writes could not fit.
+func (st *state) within(l Limits) error {
+	if len(st.entries) > l.MaxEvents || st.records+st.reservedRecords > l.MaxEntries || st.bytes+st.reservedBytes > l.MaxBytes {
+		return ErrCapacity
+	}
+	for _, e := range st.entries {
+		n, err := envelopeBytes(e.ev)
+		if err != nil {
+			return err
+		}
+		if n > l.MaxEventBytes {
+			return ErrCapacity
+		}
+	}
+	return nil
+}
+
+// envelopeBytes is the encoded size of a normalized envelope, which MaxEventBytes bounds.
+func envelopeBytes(ev storedEvent) (int, error) {
+	b, err := json.Marshal(ev)
+	if err != nil {
+		return 0, ErrUnavailable
+	}
+	return len(b), nil
+}
+
+// nextFacts returns the full facts after rec, which check has already accepted.
+func nextFacts(generation string, ev storedEvent, cur Facts, rec record) Facts {
 	switch rec.Kind {
 	case "receipt":
-		st.entries[rec.EventID] = &entry{ev: *rec.Event, facts: Facts{
-			EventID: rec.EventID, Generation: st.generation, Version: 1, Receipt: true,
-			Admission: "pending", Evaluation: "not-established", Attribution: rec.Event.Asserting,
-		}}
+		return Facts{
+			EventID: rec.EventID, Generation: generation, Version: 1, Receipt: true,
+			Admission: "pending", Evaluation: "not-established", Attribution: ev.Asserting,
+		}
 	case "admission":
-		e := st.entries[rec.EventID]
-		e.facts.Admission = rec.Decision
-		e.facts.Version = rec.Version
+		cur.Admission = rec.Decision
+		cur.Version = rec.Version
 	case "evaluation":
-		e := st.entries[rec.EventID]
+		cur.Evaluation = rec.Evaluation
+		cur.Model = ev.Schema
+		cur.Evidence = rec.Evidence
+		cur.Version = rec.Version
+	}
+	return cur
+}
+
+// fold applies a record that check has already accepted.
+func (st *state) fold(rec record, size int) {
+	if rec.Kind == "receipt" {
+		st.entries[rec.EventID] = &entry{ev: *rec.Event}
+	}
+	e := st.entries[rec.EventID]
+	oldRecords, oldBytes := reserveOf(e.facts)
+	e.facts = nextFacts(st.generation, e.ev, e.facts, rec)
+	newRecords, newBytes := reserveOf(e.facts)
+	st.reservedRecords += newRecords - oldRecords
+	st.reservedBytes += newBytes - oldBytes
+	if rec.Kind == "evaluation" {
 		st.attempts[rec.Attempt] = rec.EventID
-		e.facts.Evaluation = rec.Evaluation
-		e.facts.Model = e.ev.Schema
-		e.facts.Evidence = rec.Evidence
-		e.facts.Version = rec.Version
 	}
 	st.records++
 	st.bytes += size
@@ -173,48 +276,13 @@ func evaluateAdmitted(codec Codec, target *entry, hist []*entry, boundary string
 	return core.Evaluate(req, codec.Model()), nil
 }
 
-type evidenceDoc struct {
-	Events       []storedEvent `json:"events"`
-	Evaluation   string        `json:"evaluation"`
-	Completeness string        `json:"completeness"`
-	Attempted    []string      `json:"attempted"`
-	Blocked      []string      `json:"blocked"`
-	Successful   []string      `json:"successful"`
-	Diagnostics  []string      `json:"diagnostics"`
-}
-
-// evidenceOf digests the exact admitted history and the CORE outcome labels. It does
-// not digest private working state, which the store cannot encode generically.
-func evidenceOf(hist []*entry, res core.Result[int64]) (string, error) {
-	doc := evidenceDoc{
-		Events:       make([]storedEvent, 0, len(hist)),
-		Evaluation:   res.Evaluation,
-		Completeness: res.Completeness,
-		Attempted:    res.Attempted,
-		Blocked:      res.Blocked,
-		Successful:   res.Successful,
-		Diagnostics:  make([]string, 0, len(res.Diagnostics)),
-	}
-	for _, h := range hist {
-		doc.Events = append(doc.Events, h.ev)
-	}
-	for _, d := range res.Diagnostics {
-		doc.Diagnostics = append(doc.Diagnostics, d.Key+"|"+d.Condition)
-	}
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", ErrUnavailable
-	}
-	sum := sha256.Sum256(b)
-	return "sha256:" + hex.EncodeToString(sum[:]), nil
-}
-
 // validateEvent checks the identity fields a caller supplies before any host call.
 func validateEvent(e perhap.Event, schema string) error {
-	if !canonicalV6(e.ID) || !text(e.Context) || !text(e.EntityID) || !text(e.Type) || !text(e.CorrelationID) || !text(schema) {
+	if !canonicalV6(e.ID) || !text(e.Context) || !text(e.EntityID) || !text(e.Type) || !lossless(e.CorrelationID) || !text(schema) {
 		return ErrInvalid
 	}
-	if e.CausationID != nil && !canonicalV6(*e.CausationID) {
+	// Causation links are codec-owned opaque references, so only their text is checked.
+	if e.CausationID != nil && !text(*e.CausationID) {
 		return ErrInvalid
 	}
 	return nil
@@ -279,9 +347,14 @@ func copyPtr(p *string) *string {
 	return &c
 }
 
+// lossless requires a string that survives storage as valid Unicode; it may be empty.
+func lossless(s string) bool {
+	return utf8.ValidString(s)
+}
+
 // text requires a nonempty string that survives lossless storage as valid Unicode.
 func text(s string) bool {
-	return s != "" && utf8.ValidString(s)
+	return s != "" && lossless(s)
 }
 
 // canonicalV6 requires the lowercase hyphenated UUIDv6 form, so equal IDs compare bytewise.

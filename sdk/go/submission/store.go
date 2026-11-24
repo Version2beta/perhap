@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/version2beta/perhap/sdk/go/core"
 )
 
@@ -103,9 +104,6 @@ func (c *Client) Submit(ctx context.Context, in Input, r Recipient) error {
 	if err := validateEvent(in.Event, in.Schema); err != nil {
 		return err
 	}
-	if len(in.Event.Data) > o.limits.MaxEventBytes {
-		return ErrCapacity
-	}
 	actor, err := o.host.Authorize(ctx, "submit", in.Event.ID, in.Event.Context, in.AttributionBinding)
 	if err != nil {
 		return publicErr(err, ErrDenied)
@@ -121,6 +119,12 @@ func (c *Client) Submit(ctx context.Context, in Input, r Recipient) error {
 	ev, err := newStoredEvent(norm, in.Schema, actor.Asserting)
 	if err != nil {
 		return err
+	}
+	// MaxEventBytes bounds the normalized envelope, which is what is stored and evaluated.
+	if n, err := envelopeBytes(ev); err != nil {
+		return err
+	} else if n > o.limits.MaxEventBytes {
+		return ErrCapacity
 	}
 	reply, err := o.submit(ctx, actor, ev, Input{Event: norm, Schema: in.Schema, AttributionBinding: in.AttributionBinding})
 	if err != nil {
@@ -165,7 +169,7 @@ func (o *Owner) Evaluate(ctx context.Context, id, attempt string) error {
 	defer done()
 	ctx, stop := o.bound(ctx)
 	defer stop()
-	if !text(attempt) {
+	if !text(attempt) || len(attempt) > maxAttemptBytes {
 		return ErrInvalid
 	}
 	o.mu.Lock()
@@ -197,13 +201,14 @@ func (o *Owner) Evaluate(ctx context.Context, id, attempt string) error {
 	if err != nil {
 		return err
 	}
-	evidence, err := evidenceOf(hist, res)
+	// The evidence reference is opaque and random per attempt; it reveals no history digest.
+	ref, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return ErrUnavailable
 	}
 	return o.commit(ctx, "evaluation", record{
 		Kind: "evaluation", EventID: id, Version: target.facts.Version + 1,
-		Attempt: attempt, Evaluation: outcome, Evidence: evidence,
+		Attempt: attempt, Evaluation: outcome, Evidence: ref.String(),
 	})
 }
 
@@ -311,31 +316,64 @@ func replyOf(e *entry, id, scope string) Reply {
 	return Reply{Kind: "facts", Facts: e.facts}
 }
 
-// release delivers reply through the host fence. Once the recipient has been called,
-// an error or cancellation is an uncertain release rather than a rollback.
+// release delivers reply through the host fence. The recipient runs only inside the
+// host's synchronous Release call, while the context is live, and at most once. Once it
+// has been called, any error, expiry or host misuse is an uncertain release, not a rollback.
 func (o *Owner) release(ctx context.Context, actor Actor, id string, reply Reply, r Recipient) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	called := false
-	err := o.host.Release(ctx, actor, id, func() error {
-		called = true
-		return r(ctx, reply)
-	})
-	if called {
-		if err != nil || ctx.Err() != nil {
-			return ErrRelease
-		}
-		return nil
-	}
-	if err != nil {
-		return publicErr(err, ErrDenied)
-	}
-	return ErrDenied
+	g := &replyGate{}
+	hostErr := o.host.Release(ctx, actor, id, func() error { return g.deliver(ctx, reply, r) })
+	return g.finish(ctx, hostErr)
 }
 
-// publicErr maps host or internal failures onto the public sentinels. Context errors
-// pass through unchanged; any other private error becomes the supplied category.
+// replyGate owns the accounting for one reply, whatever the host does with the fence.
+type replyGate struct {
+	mu           sync.Mutex
+	sealed       bool  // Release has returned; a late host call cannot reach the recipient
+	called       bool  // the recipient has been invoked
+	misused      bool  // the host invoked the fence again, or after Release returned
+	recipientErr error // the recipient's own result
+}
+
+// deliver is the fence the host calls. It refuses repeats and late calls and checks the
+// context before any recipient call.
+func (g *replyGate) deliver(ctx context.Context, reply Reply, r Recipient) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.sealed || g.called {
+		g.misused = true
+		return ErrRelease
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	g.called = true
+	g.recipientErr = r(ctx, reply)
+	return g.recipientErr
+}
+
+// finish seals the gate and classifies the outcome. A host error or context expiry after
+// the recipient call is uncertain even if the host swallowed it.
+func (g *replyGate) finish(ctx context.Context, hostErr error) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.sealed = true
+	if !g.called {
+		if hostErr != nil {
+			return publicErr(hostErr, ErrDenied)
+		}
+		return ErrDenied
+	}
+	if g.misused || g.recipientErr != nil || hostErr != nil || ctx.Err() != nil {
+		return ErrRelease
+	}
+	return nil
+}
+
+// publicErr maps host or internal failures onto the public sentinels. Context causes
+// become the canonical context sentinels; wrapped private text never escapes.
 func publicErr(err, fallback error) error {
 	if err == nil {
 		return nil
@@ -345,8 +383,11 @@ func publicErr(err, fallback error) error {
 			return p
 		}
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return err
+	if errors.Is(err, context.Canceled) {
+		return context.Canceled
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return context.DeadlineExceeded
 	}
 	return fallback
 }

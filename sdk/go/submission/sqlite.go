@@ -68,6 +68,9 @@ func (o *Owner) openDB(ctx context.Context, path string, created bool) error {
 		return openError(err)
 	}
 	st, err := initOrLoad(ctx, conn, created)
+	if err == nil {
+		err = st.within(o.limits)
+	}
 	if err != nil {
 		_, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK")
 		return openError(err)
@@ -277,6 +280,9 @@ func openError(err error) error {
 	if errors.Is(err, ErrUnavailable) {
 		return ErrUnavailable
 	}
+	if errors.Is(err, ErrCapacity) {
+		return ErrCapacity
+	}
 	var se sqlite3.Error
 	if errors.As(err, &se) && (se.Code == sqlite3.ErrNotADB || se.Code == sqlite3.ErrCorrupt) {
 		return ErrIntegrity
@@ -299,7 +305,7 @@ func (o *Owner) commit(ctx context.Context, stage string, rec record) error {
 	if err != nil {
 		return ErrUnavailable
 	}
-	if err := o.st.fits(len(body), o.limits); err != nil {
+	if err := o.st.fits(rec, len(body), o.limits); err != nil {
 		return err
 	}
 	if err := o.hook(stage + ":before_tx"); err != nil {
