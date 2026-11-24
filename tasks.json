@@ -1,6 +1,6 @@
 {
-  "format": "gofmt -w sdk/go/submission",
-  "format_check": "test -z \"$(gofmt -l sdk/go/submission)\"",
+  "format": "gofmt -w sdk/go/observation/resume.go sdk/go/submission/matching.go",
+  "format_check": "test -z \"$(gofmt -l sdk/go/observation/resume.go sdk/go/submission/matching.go)\"",
   "check": "go vet ./...",
   "protected": [
     "^\\.complexity/CALIBRATION\\.md$",
@@ -81,9 +81,28 @@
     "^sdk/go/observation/testdata/",
     "^sdk/go/viewjournal/(contracts|journal|retained_contracts)\\.go$",
     "^sdk/go/observation/(session|recovery_contracts)\\.go$",
-    "^sdk/go/observation/",
     "^sdk/go/viewjournal/",
-    "^sdk/go/submission/contracts\\.go$"
+    "^sdk/go/submission/contracts\\.go$",
+    "^sdk/go/observation/authority_recovery_test\\.go$",
+    "^sdk/go/observation/contracts\\.go$",
+    "^sdk/go/observation/recovery\\.go$",
+    "^sdk/go/observation/recovery_contracts\\.go$",
+    "^sdk/go/observation/recovery_error_test\\.go$",
+    "^sdk/go/observation/recovery_output_test\\.go$",
+    "^sdk/go/observation/recovery_pending_test\\.go$",
+    "^sdk/go/observation/recovery_proof_test\\.go$",
+    "^sdk/go/observation/recovery_review_test\\.go$",
+    "^sdk/go/observation/recovery_test\\.go$",
+    "^sdk/go/observation/session\\.go$",
+    "^sdk/go/observation/session_test\\.go$",
+    "^sdk/go/submission/boundaries_test\\.go$",
+    "^sdk/go/submission/contracts\\.go$",
+    "^sdk/go/submission/integrity_test\\.go$",
+    "^sdk/go/submission/review_test\\.go$",
+    "^sdk/go/submission/sqlite\\.go$",
+    "^sdk/go/submission/state\\.go$",
+    "^sdk/go/submission/store\\.go$",
+    "^sdk/go/submission/store_test\\.go$"
   ],
   "tasks": [
     {
@@ -421,8 +440,28 @@
       "tier": "normal"
     },
     {
-      "id": "GSALL",
-      "title": "All earlier stages plus gateway full Go/race/vet and node checks",
+      "id": "GIPRESUME",
+      "title": "TestCertifiedResumeHandshake, TestCertifiedResumeFencesAndFailure",
+      "test": "go test -count=1 -v ./sdk/go/observation -run '^(TestCertifiedResumeHandshake|TestCertifiedResumeFencesAndFailure)$'",
+      "expect": [
+        "^--- PASS: TestCertifiedResumeHandshake \\(.*\\)$",
+        "^--- PASS: TestCertifiedResumeFencesAndFailure \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "GIPMATCH",
+      "title": "TestReadOnlySemanticResolution, TestMatchingNoAdmissionAndFencedMismatch",
+      "test": "go test -count=1 -v ./sdk/go/submission -run '^(TestReadOnlySemanticResolution|TestMatchingNoAdmissionAndFencedMismatch)$'",
+      "expect": [
+        "^--- PASS: TestReadOnlySemanticResolution \\(.*\\)$",
+        "^--- PASS: TestMatchingNoAdmissionAndFencedMismatch \\(.*\\)$"
+      ],
+      "tier": "normal"
+    },
+    {
+      "id": "GIPALL",
+      "title": "Prerequisites and all Go/client-local prior regression checks",
       "test": "go test -count=1 -v ./... && go test -race -count=1 ./... && go vet ./... && node --test scripts/complexity-score.test.mjs && (cd demo/web && npm test)",
       "expect": [
         "^--- PASS: TestBootstrap40RaceAndBarrier \\(.*\\)$",
@@ -467,7 +506,9 @@
         "^--- PASS: TestSubmissionReservedCompletionAndReopenBounds \\(.*\\)$",
         "^--- PASS: TestSubmissionEnvelopeLimitsAndReferences \\(.*\\)$",
         "^--- PASS: TestSubmissionReplyAccountingAndOpaqueErrors \\(.*\\)$",
-        "^--- PASS: TestSubmissionOpaqueEvaluationEvidence \\(.*\\)$"
+        "^--- PASS: TestSubmissionOpaqueEvaluationEvidence \\(.*\\)$",
+        "^--- PASS: TestCertifiedResumeHandshake \\(.*\\)$",
+        "^--- PASS: TestReadOnlySemanticResolution \\(.*\\)$"
       ],
       "tier": "normal"
     }

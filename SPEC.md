@@ -127,3 +127,9 @@ Binding docs/rddd/SUBMIT-RESOLVE-SPEC.md incorporates approved choices: separate
 SQLite gateway event authority, permanent identity retention, registered codec,
 canonical UUIDv6 and actual trusted CORE evaluation. Legacy JetStream is outside
 this authority. No new stage number, production AUTH, transport or adapter.
+
+## Optional integration prerequisites
+
+Binding docs/rddd/INTEGRATION-PREREQUISITES-SPEC.md: ResumeCertified releases an
+actual renewed anchor proof before tail; ResolveMatching is read-only and fences
+matching/conflict replies. Existing APIs/behavior remain unchanged.

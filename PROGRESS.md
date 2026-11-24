@@ -1,4 +1,7 @@
-# CORE/REV, publication/observation and gateway Submit/Resolve
+# Go optional integration prerequisites
+
+Current approved mapping: INTEGRATION-PREREQUISITES-SPEC.md. Two new files only.
+Existing gateway/observation APIs remain protected and backward compatible.
 
 Current approved scope: SUBMIT-RESOLVE-SPEC.md. New submission package only.
 Previous source/APIs/tests/dependencies remain protected.

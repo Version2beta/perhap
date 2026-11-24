@@ -528,7 +528,7 @@ func claimsFor(b Binding, purpose string, rec viewjournal.Record) Claims {
 // validRecoveryFrame keeps record-bearing and proof-bearing frames bound to b.
 func validRecoveryFrame(b Binding, f RecoveryFrame) error {
 	switch f.Kind {
-	case "snapshot", "replacement", "barrier":
+	case "snapshot", "replacement", "barrier", "resume":
 		if f.Record.View != b.View || f.Record.Revision == 0 || f.Proof == "" || f.Session == "" {
 			return ErrDenied
 		}
